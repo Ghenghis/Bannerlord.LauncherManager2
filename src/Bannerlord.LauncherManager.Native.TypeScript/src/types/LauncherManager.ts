@@ -85,6 +85,77 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Backup/Restore Types
+export type BackupType = 'Full' | 'ModulesOnly' | 'SavesOnly' | 'SettingsOnly';
+export type BackupStatus = 'Pending' | 'InProgress' | 'Completed' | 'Failed' | 'Cancelled';
+
+export interface BackupMetadata {
+  id: string;
+  name: string;
+  description?: string;
+  type: BackupType;
+  createdAt: string;
+  sizeBytes: number;
+  filePath: string;
+  gameVersion?: string;
+  moduleCount: number;
+  saveCount: number;
+  includedModules: string[];
+  includedSaves: string[];
+  isAutoBackup: boolean;
+  autoBackupReason?: string;
+  checksum?: string;
+}
+
+export interface BackupOptions {
+  type?: BackupType;
+  name?: string;
+  description?: string;
+  compress?: boolean;
+  includeModules?: string[];
+  includeSaves?: string[];
+  includeModFiles?: boolean;
+  generateChecksum?: boolean;
+}
+
+export interface RestoreOptions {
+  restoreModuleConfigs?: boolean;
+  restoreSaves?: boolean;
+  restoreProfiles?: boolean;
+  restoreSettings?: boolean;
+  overwriteExisting?: boolean;
+  backupBeforeRestore?: boolean;
+  verifyChecksum?: boolean;
+}
+
+export interface BackupResult {
+  success: boolean;
+  errorMessage?: string;
+  backup?: BackupMetadata;
+  duration: number;
+  warnings: string[];
+}
+
+export interface RestoreResult {
+  success: boolean;
+  errorMessage?: string;
+  modulesRestored: number;
+  savesRestored: number;
+  profilesRestored: number;
+  duration: number;
+  preRestoreBackup?: BackupMetadata;
+  warnings: string[];
+}
+
+export interface AutoBackupSettings {
+  enabled: boolean;
+  beforeModInstall: boolean;
+  beforeModUpdate: boolean;
+  beforeGameUpdate: boolean;
+  maxAutoBackups: number;
+  minHoursBetweenBackups: number;
+}
+
 export type LauncherManager = {
   constructor(): LauncherManager;
 
@@ -120,4 +191,15 @@ export type LauncherManager = {
   dialogTestFileOpenAsync(): Promise<string>;
 
   setGameParameterLoadOrderAsync(loadOrder: LoadOrder): Promise<void>;
+
+  // Backup/Restore methods
+  createBackupAsync(options?: BackupOptions): Promise<BackupResult>;
+  createAutoBackupAsync(reason: string): Promise<BackupResult>;
+  restoreBackupAsync(backupId: string, options?: RestoreOptions): Promise<RestoreResult>;
+  listBackupsAsync(): Promise<BackupMetadata[]>;
+  getBackupByIdAsync(id: string): Promise<BackupMetadata | null>;
+  deleteBackupAsync(backupId: string): Promise<boolean>;
+  getAutoBackupSettings(): AutoBackupSettings;
+  setAutoBackupSettings(settings: AutoBackupSettings): void;
+  verifyBackupAsync(backupId: string): Promise<boolean>;
 }
