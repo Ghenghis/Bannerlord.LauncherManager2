@@ -85,6 +85,45 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Import/Export Types
+export type LoadOrderFormat = 'Native' | 'Vortex' | 'BUTRLoader' | 'ModOrganizer2' | 'TextList' | 'Csv';
+
+export interface ImportedLoadOrderEntry {
+  id: string;
+  name?: string;
+  isEnabled: boolean;
+  index: number;
+  version?: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  errorMessage?: string;
+  format: LoadOrderFormat;
+  entries: ImportedLoadOrderEntry[];
+  matchedModules: number;
+  missingModules: number;
+  missingModuleIds: string[];
+  warnings: string[];
+}
+
+export interface ExportOptions {
+  format?: LoadOrderFormat;
+  includeDisabled?: boolean;
+  includeVersions?: boolean;
+  includeNative?: boolean;
+  header?: string;
+}
+
+export interface ExportResult {
+  success: boolean;
+  errorMessage?: string;
+  content?: string;
+  format: LoadOrderFormat;
+  moduleCount: number;
+  fileExtension: string;
+}
+
 export type LauncherManager = {
   constructor(): LauncherManager;
 
@@ -120,4 +159,13 @@ export type LauncherManager = {
   dialogTestFileOpenAsync(): Promise<string>;
 
   setGameParameterLoadOrderAsync(loadOrder: LoadOrder): Promise<void>;
+
+  // Import/Export methods
+  importLoadOrderAsync(content: string, format?: LoadOrderFormat): Promise<ImportResult>;
+  importLoadOrderFromFileAsync(filePath: string, format?: LoadOrderFormat): Promise<ImportResult>;
+  applyImportedLoadOrderAsync(importResult: ImportResult): Promise<boolean>;
+  exportLoadOrderAsync(options?: ExportOptions): Promise<ExportResult>;
+  exportLoadOrderToFileAsync(filePath: string, options?: ExportOptions): Promise<ExportResult>;
+  convertLoadOrderFormatAsync(content: string, sourceFormat: LoadOrderFormat, targetFormat: LoadOrderFormat): Promise<ExportResult>;
+  detectLoadOrderFormat(content: string): LoadOrderFormat;
 }
