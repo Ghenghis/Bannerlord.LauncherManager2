@@ -85,6 +85,62 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Conflict Resolution Types
+export type ConflictType = 'MissingDependency' | 'VersionMismatch' | 'Incompatible' | 'LoadOrderConflict' | 'TransitiveDependencyMissing' | 'CircularDependency';
+export type ResolutionType = 'InstallDependency' | 'UpdateModule' | 'DisableModule' | 'ReorderModules' | 'EnableDependency' | 'ManualResolution' | 'Ignore';
+
+export interface SuggestedResolution {
+  type: ResolutionType;
+  description: string;
+  targetModuleId?: string;
+  requiredVersion?: string;
+  newIndex?: number;
+  canAutoResolve: boolean;
+  priority: number;
+}
+
+export interface ModuleConflict {
+  id: string;
+  type: ConflictType;
+  severity: number;
+  sourceModuleId: string;
+  sourceModuleName: string;
+  targetModuleId?: string;
+  targetModuleName?: string;
+  description: string;
+  technicalDetails?: string;
+  requiredVersion?: string;
+  currentVersion?: string;
+  suggestedResolutions: SuggestedResolution[];
+  isResolved: boolean;
+  appliedResolution?: SuggestedResolution;
+}
+
+export interface ConflictDetectionResult {
+  hasConflicts: boolean;
+  autoResolvableCount: number;
+  manualResolutionCount: number;
+  conflicts: ModuleConflict[];
+  conflictsBySeverity: { [severity: number]: ModuleConflict[] };
+  summary: string;
+}
+
+export interface ResolutionResult {
+  success: boolean;
+  errorMessage?: string;
+  conflict?: ModuleConflict;
+  resolution?: SuggestedResolution;
+  newConflicts: ModuleConflict[];
+}
+
+export interface AutoResolveResult {
+  allResolved: boolean;
+  resolvedCount: number;
+  unresolvedCount: number;
+  results: ResolutionResult[];
+  remainingConflicts: ModuleConflict[];
+}
+
 export type LauncherManager = {
   constructor(): LauncherManager;
 
@@ -120,4 +176,16 @@ export type LauncherManager = {
   dialogTestFileOpenAsync(): Promise<string>;
 
   setGameParameterLoadOrderAsync(loadOrder: LoadOrder): Promise<void>;
+
+  // Conflict Resolution methods
+  detectConflictsAsync(): Promise<ConflictDetectionResult>;
+  autoResolveConflictsAsync(): Promise<AutoResolveResult>;
+  applyResolutionAsync(conflict: ModuleConflict, resolution: SuggestedResolution): Promise<ResolutionResult>;
+  getConflictsBySeverityAsync(minSeverity: number): Promise<ModuleConflict[]>;
+  getCriticalConflictsAsync(): Promise<ModuleConflict[]>;
+  hasConflictsAsync(): Promise<boolean>;
+  getConflictSummaryAsync(): Promise<string>;
+  validateConfigurationAsync(): Promise<boolean>;
+  getConflictsForModuleAsync(moduleId: string): Promise<ModuleConflict[]>;
+  getConflictsByTypeAsync(type: ConflictType): Promise<ModuleConflict[]>;
 }
