@@ -70,5 +70,8 @@
     "require": [
       "./test/_force-exit.js"
     ]
+  },
+  "dependencies": {
+    "@butr/vortexextensionnative": "^2.0.197"
   }
 }

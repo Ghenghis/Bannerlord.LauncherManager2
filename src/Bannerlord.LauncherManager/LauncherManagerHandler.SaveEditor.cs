@@ -738,6 +738,6 @@ partial class LauncherManagerHandler
     {
         using var sha256 = SHA256.Create();
         var hash = sha256.ComputeHash(data);
-        return Convert.ToHexString(hash).ToLowerInvariant();
+        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 }
