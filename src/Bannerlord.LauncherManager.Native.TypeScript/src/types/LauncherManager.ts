@@ -85,6 +85,68 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Save Analysis Types
+export type SaveCompatibilityStatus = 'Compatible' | 'MinorIssues' | 'MajorIssues' | 'Incompatible' | 'Unknown';
+export type SaveIssueType = 'MissingMod' | 'VersionMismatch' | 'ExtraMod' | 'LoadOrderDifference' | 'CorruptedData' | 'GameVersionMismatch';
+export type SaveIssueSeverity = 'Info' | 'Warning' | 'Error' | 'Critical';
+
+export interface SaveModuleInfo {
+  id: string;
+  name: string;
+  version: string;
+  isInstalled: boolean;
+  installedVersion?: string;
+  loadOrder: number;
+  isEssential: boolean;
+}
+
+export interface SaveIssue {
+  type: SaveIssueType;
+  severity: SaveIssueSeverity;
+  moduleId?: string;
+  description: string;
+  suggestion?: string;
+  mightStillLoad: boolean;
+}
+
+export interface SaveAnalysisResult {
+  saveFileName: string;
+  saveDate?: string;
+  gameVersion?: string;
+  currentGameVersion?: string;
+  status: SaveCompatibilityStatus;
+  requiredModules: SaveModuleInfo[];
+  extraModules: SaveModuleInfo[];
+  issues: SaveIssue[];
+  missingModCount: number;
+  versionMismatchCount: number;
+  isSafeToLoad: boolean;
+  recommendedAction?: string;
+}
+
+export interface SaveAnalysisOptions {
+  checkVersions?: boolean;
+  checkLoadOrder?: boolean;
+  includeInfoIssues?: boolean;
+  checkExtraMods?: boolean;
+}
+
+export interface SaveCollectionSummary {
+  totalSaves: number;
+  compatibleSaves: number;
+  savesWithIssues: number;
+  incompatibleSaves: number;
+  commonlyMissingMods: string[];
+}
+
+export interface SaveModRequirements {
+  saveFileName: string;
+  gameVersion?: string;
+  moduleIds: string[];
+  moduleVersions: Record<string, string>;
+  exportedAt: string;
+}
+
 // Launch Statistics Types
 export type SessionOutcome = 'Unknown' | 'Normal' | 'Crash' | 'ForceQuit' | 'Error';
 
@@ -193,4 +255,16 @@ export type LauncherManager = {
   clearStatisticsAsync(): Promise<void>;
   exportStatisticsAsync(): Promise<string>;
   getDailyLaunchCountsAsync(days?: number): Promise<Record<string, number>>;
+
+  // Save Analysis methods
+  analyzeSaveAsync(saveFileName: string, options?: SaveAnalysisOptions): Promise<SaveAnalysisResult>;
+  analyzeAllSavesAsync(options?: SaveAnalysisOptions): Promise<SaveAnalysisResult[]>;
+  getSaveCollectionSummaryAsync(): Promise<SaveCollectionSummary>;
+  getMissingModsForSaveAsync(saveFileName: string): Promise<SaveModuleInfo[]>;
+  getVersionMismatchesForSaveAsync(saveFileName: string): Promise<SaveModuleInfo[]>;
+  isSaveSafeToLoadAsync(saveFileName: string): Promise<boolean>;
+  exportSaveRequirementsAsync(saveFileName: string): Promise<SaveModRequirements>;
+  exportSaveRequirementsJsonAsync(saveFileName: string): Promise<string>;
+  configureModsForSaveAsync(saveFileName: string): Promise<boolean>;
+  getCompatibleSavesAsync(): Promise<string[]>;
 }
