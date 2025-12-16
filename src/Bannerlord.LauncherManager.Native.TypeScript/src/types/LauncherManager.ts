@@ -85,6 +85,77 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Preset Sharing Types
+export type PresetVisibility = 'Private' | 'Public' | 'Unlisted';
+export type PresetApplyStatus = 'Success' | 'PartialSuccess' | 'MissingMods' | 'Failed';
+
+export interface PresetModuleEntry {
+  id: string;
+  name: string;
+  version: string;
+  isEnabled: boolean;
+  loadOrder: number;
+  isRequired: boolean;
+  downloadUrl?: string;
+  nexusModsId?: string;
+  steamWorkshopId?: string;
+}
+
+export interface ModPreset {
+  id: string;
+  name: string;
+  description?: string;
+  author?: string;
+  createdAt: string;
+  updatedAt: string;
+  gameVersion?: string;
+  visibility: PresetVisibility;
+  tags: string[];
+  modules: PresetModuleEntry[];
+  shareCode: string;
+  moduleCount: number;
+  enabledCount: number;
+  formatVersion: number;
+}
+
+export interface PresetApplyResult {
+  status: PresetApplyStatus;
+  applied: string[];
+  missing: PresetModuleEntry[];
+  versionMismatches: PresetModuleEntry[];
+  errorMessage?: string;
+  allRequiredFound: boolean;
+}
+
+export interface PresetCreateOptions {
+  enabledOnly?: boolean;
+  includeNative?: boolean;
+  includeDownloadUrls?: boolean;
+  includeVersions?: boolean;
+}
+
+export interface PresetApplyOptions {
+  skipMissing?: boolean;
+  ignoreVersions?: boolean;
+  disableOthers?: boolean;
+  createBackup?: boolean;
+}
+
+export interface PresetImportResult {
+  success: boolean;
+  preset?: ModPreset;
+  errorMessage?: string;
+  wasDuplicate: boolean;
+}
+
+export interface PresetComparisonResult {
+  onlyInFirst: string[];
+  onlyInSecond: string[];
+  inBoth: string[];
+  differentOrder: string[];
+  similarityPercent: number;
+}
+
 // Launch Statistics Types
 export type SessionOutcome = 'Unknown' | 'Normal' | 'Crash' | 'ForceQuit' | 'Error';
 
@@ -193,4 +264,24 @@ export type LauncherManager = {
   clearStatisticsAsync(): Promise<void>;
   exportStatisticsAsync(): Promise<string>;
   getDailyLaunchCountsAsync(days?: number): Promise<Record<string, number>>;
+
+  // Preset Sharing methods
+  createPresetAsync(name: string, description?: string, options?: PresetCreateOptions): Promise<ModPreset>;
+  getPresetsAsync(): Promise<ModPreset[]>;
+  getPresetByIdAsync(presetId: string): Promise<ModPreset | null>;
+  getPresetByShareCodeAsync(shareCode: string): Promise<ModPreset | null>;
+  updatePresetAsync(presetId: string, name?: string, description?: string, tags?: string[]): Promise<boolean>;
+  refreshPresetAsync(presetId: string, options?: PresetCreateOptions): Promise<ModPreset | null>;
+  deletePresetAsync(presetId: string): Promise<boolean>;
+  applyPresetAsync(presetId: string, options?: PresetApplyOptions): Promise<PresetApplyResult>;
+  exportPresetAsync(presetId: string): Promise<string>;
+  exportPresetToFileAsync(presetId: string, filePath: string): Promise<boolean>;
+  importPresetAsync(json: string): Promise<PresetImportResult>;
+  importPresetFromFileAsync(filePath: string): Promise<PresetImportResult>;
+  getImportedPresetsAsync(): Promise<ModPreset[]>;
+  toggleFavoriteAsync(presetId: string): Promise<boolean>;
+  getFavoritePresetsAsync(): Promise<ModPreset[]>;
+  comparePresetsAsync(presetId1: string, presetId2: string): Promise<PresetComparisonResult>;
+  getLastAppliedPresetAsync(): Promise<ModPreset | null>;
+  getShareCodeAsync(presetId: string): Promise<string>;
 }
