@@ -85,6 +85,50 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Mod Category Types
+export type ModuleCategoryType = 'Uncategorized' | 'Gameplay' | 'Combat' | 'Graphics' | 'UI' | 'Audio' | 'QualityOfLife' | 'Overhaul' | 'Troops' | 'Items' | 'Maps' | 'Quests' | 'Economy' | 'Diplomacy' | 'Cheats' | 'Utility' | 'Framework' | 'Compatibility';
+
+export interface ModuleCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  isPredefined: boolean;
+  sortOrder: number;
+}
+
+export interface ModuleTag {
+  name: string;
+  color?: string;
+  createdAt: string;
+}
+
+export interface ModuleCategoryAssignment {
+  moduleId: string;
+  categoryId: string;
+  tags: string[];
+  notes?: string;
+  rating?: number;
+  isFavorite: boolean;
+}
+
+export interface CategorySummary {
+  categoryId: string;
+  categoryName: string;
+  moduleCount: number;
+  enabledCount: number;
+}
+
+export interface ModuleFilterOptions {
+  categoryId?: string;
+  tags?: string[];
+  favoritesOnly?: boolean;
+  minRating?: number;
+  enabledOnly?: boolean;
+  searchText?: string;
+}
+
 export type LauncherManager = {
   constructor(): LauncherManager;
 
@@ -120,4 +164,26 @@ export type LauncherManager = {
   dialogTestFileOpenAsync(): Promise<string>;
 
   setGameParameterLoadOrderAsync(loadOrder: LoadOrder): Promise<void>;
+
+  // Mod Category methods
+  getCategoriesAsync(): Promise<ModuleCategory[]>;
+  createCategoryAsync(name: string, description?: string, color?: string): Promise<ModuleCategory>;
+  deleteCategoryAsync(categoryId: string): Promise<boolean>;
+  setModuleCategoryAsync(moduleId: string, categoryId: string): Promise<void>;
+  getModuleCategoryAsync(moduleId: string): Promise<ModuleCategory | null>;
+  getModulesByCategoryAsync(categoryId: string): Promise<string[]>;
+  getTagsAsync(): Promise<ModuleTag[]>;
+  createTagAsync(name: string, color?: string): Promise<ModuleTag>;
+  deleteTagAsync(tagName: string): Promise<boolean>;
+  addModuleTagAsync(moduleId: string, tagName: string): Promise<void>;
+  removeModuleTagAsync(moduleId: string, tagName: string): Promise<void>;
+  getModuleTagsAsync(moduleId: string): Promise<string[]>;
+  getModulesByTagAsync(tagName: string): Promise<string[]>;
+  setModuleFavoriteAsync(moduleId: string, isFavorite: boolean): Promise<void>;
+  getFavoriteModulesAsync(): Promise<string[]>;
+  setModuleRatingAsync(moduleId: string, rating: number): Promise<void>;
+  setModuleNotesAsync(moduleId: string, notes?: string): Promise<void>;
+  getModuleAssignmentAsync(moduleId: string): Promise<ModuleCategoryAssignment | null>;
+  getCategorySummaryAsync(): Promise<CategorySummary[]>;
+  filterModulesAsync(options: ModuleFilterOptions): Promise<string[]>;
 }
