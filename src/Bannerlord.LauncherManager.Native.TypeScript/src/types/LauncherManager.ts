@@ -85,6 +85,70 @@ export interface FileFilter {
   extensions: string[];
 }
 
+// Mod Health Check Types
+export type HealthIssueSeverity = 'Info' | 'Warning' | 'Error' | 'Critical';
+export type HealthIssueType = 'MissingFile' | 'CorruptedFile' | 'InvalidChecksum' | 'MissingDll' | 'IncompatibleDll' | 'InvalidSubModule' | 'MissingAsset' | 'PermissionDenied' | 'InvalidVersion' | 'DuplicateModule' | 'ObfuscatedCode';
+
+export interface ModuleHealthIssue {
+  type: HealthIssueType;
+  severity: HealthIssueSeverity;
+  moduleId: string;
+  moduleName: string;
+  description: string;
+  affectedFile?: string;
+  expectedValue?: string;
+  actualValue?: string;
+  suggestedFix?: string;
+  canAutoRepair: boolean;
+}
+
+export interface ModuleHealthStatus {
+  moduleId: string;
+  moduleName: string;
+  version: string;
+  isHealthy: boolean;
+  totalFiles: number;
+  verifiedFiles: number;
+  dllCount: number;
+  hasObfuscatedCode: boolean;
+  issues: ModuleHealthIssue[];
+  checkedAt: string;
+  checkDuration: number;
+}
+
+export interface HealthReport {
+  isHealthy: boolean;
+  totalModules: number;
+  healthyModules: number;
+  unhealthyModules: number;
+  totalIssues: number;
+  criticalIssues: number;
+  errorIssues: number;
+  warningIssues: number;
+  autoRepairableIssues: number;
+  moduleStatuses: ModuleHealthStatus[];
+  allIssues: ModuleHealthIssue[];
+  generatedAt: string;
+  duration: number;
+  summary: string;
+}
+
+export interface HealthCheckOptions {
+  verifyChecksums?: boolean;
+  checkDllCompatibility?: boolean;
+  detectObfuscation?: boolean;
+  checkPermissions?: boolean;
+  modulesToCheck?: string[];
+  includeNativeModules?: boolean;
+}
+
+export interface RepairResult {
+  success: boolean;
+  errorMessage?: string;
+  repairedCount: number;
+  failedCount: number;
+}
+
 export type LauncherManager = {
   constructor(): LauncherManager;
 
@@ -120,4 +184,13 @@ export type LauncherManager = {
   dialogTestFileOpenAsync(): Promise<string>;
 
   setGameParameterLoadOrderAsync(loadOrder: LoadOrder): Promise<void>;
+
+  // Mod Health Check methods
+  checkModuleHealthAsync(options?: HealthCheckOptions): Promise<HealthReport>;
+  checkSingleModuleHealthAsync(moduleId: string, options?: HealthCheckOptions): Promise<ModuleHealthStatus>;
+  validateModuleFilesAsync(moduleId: string): Promise<ModuleHealthIssue[]>;
+  detectCorruptedModulesAsync(): Promise<ModuleHealthIssue[]>;
+  getObfuscatedModulesAsync(): Promise<ModuleHealthStatus[]>;
+  repairModuleIssuesAsync(moduleId: string): Promise<RepairResult>;
+  getQuickHealthSummaryAsync(): Promise<string>;
 }
