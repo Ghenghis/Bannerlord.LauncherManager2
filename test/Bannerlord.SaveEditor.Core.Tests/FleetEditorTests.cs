@@ -783,4 +783,417 @@ public sealed class FleetEditorTests
     }
 
     #endregion
+
+    #region Comprehensive Fleet State Tests
+
+    [Theory]
+    [InlineData(FleetState.Docked)]
+    [InlineData(FleetState.Sailing)]
+    [InlineData(FleetState.Anchored)]
+    public void SetFleetState_AllStates_SetsCorrectly(FleetState state)
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetState(fleet, state);
+
+        // Assert
+        fleet.State.Should().Be(state);
+    }
+
+    [Theory]
+    [InlineData(FleetFormation.Line)]
+    [InlineData(FleetFormation.Wedge)]
+    [InlineData(FleetFormation.Circle)]
+    public void SetFleetFormation_AllFormations_SetsCorrectly(FleetFormation formation)
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetFormation(fleet, formation);
+
+        // Assert
+        fleet.Formation.Should().Be(formation);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(25)]
+    [InlineData(50)]
+    [InlineData(75)]
+    [InlineData(100)]
+    public void SetFleetMorale_ValidValues_SetsCorrectly(float morale)
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetMorale(fleet, morale);
+
+        // Assert
+        fleet.Morale.Should().Be(morale);
+    }
+
+    [Fact]
+    public void SetFleetMorale_AboveMax_ClampsTo100()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetMorale(fleet, 150);
+
+        // Assert
+        fleet.Morale.Should().Be(100);
+    }
+
+    [Fact]
+    public void SetFleetMorale_BelowMin_ClampsToZero()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetMorale(fleet, -50);
+
+        // Assert
+        fleet.Morale.Should().Be(0);
+    }
+
+    [Fact]
+    public void SetFleetGold_ValidAmount_SetsGold()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetGold(fleet, 5000);
+
+        // Assert
+        fleet.Gold.Should().Be(5000);
+    }
+
+    [Fact]
+    public void SetFleetGold_NegativeAmount_ThrowsException()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetFleetGold(fleet, -100))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void SetFleetPosition_SetsPositionCorrectly()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetPosition(fleet, 100.5f, 200.5f, 45f);
+
+        // Assert
+        fleet.Position.X.Should().Be(100.5f);
+        fleet.Position.Y.Should().Be(200.5f);
+        fleet.Position.Heading.Should().Be(45f);
+    }
+
+    #endregion
+
+    #region Comprehensive Ship Hull Tests
+
+    [Theory]
+    [InlineData(ShipType.Snekkja)]
+    [InlineData(ShipType.Knarr)]
+    [InlineData(ShipType.Cog)]
+    [InlineData(ShipType.Longship)]
+    [InlineData(ShipType.Galley)]
+    [InlineData(ShipType.Warship)]
+    [InlineData(ShipType.Carrack)]
+    [InlineData(ShipType.ManOfWar)]
+    public void CreateShip_EachType_HasCorrectBaseHull(ShipType type)
+    {
+        // Act
+        var ship = _editor.CreateShip($"Test {type}", type);
+
+        // Assert
+        ship.CurrentHullPoints.Should().Be(ShipData.GetBaseHullPoints(type));
+    }
+
+    [Fact]
+    public void SetShipHull_ToMax_SetsCorrectly()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetShipHull(ship, ship.MaxHullPoints);
+
+        // Assert
+        ship.CurrentHullPoints.Should().Be(ship.MaxHullPoints);
+    }
+
+    [Fact]
+    public void SetShipHull_ToZero_SetsCorrectly()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetShipHull(ship, 0);
+
+        // Assert
+        ship.CurrentHullPoints.Should().Be(0);
+    }
+
+    [Fact]
+    public void RepairShip_DamagedShip_RestoresHull()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        ship.CurrentHullPoints = 50;
+
+        // Act
+        _editor.RepairShip(ship);
+
+        // Assert
+        ship.CurrentHullPoints.Should().Be(ship.MaxHullPoints);
+    }
+
+    [Fact]
+    public void RepairShip_MultipleShipsInFleet_RepairsEach()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship1 = CreateTestShip();
+        var ship2 = _editor.CreateShip("Ship 2", ShipType.Galley);
+        ship1.CurrentHullPoints = 30;
+        ship2.CurrentHullPoints = 40;
+        _editor.AddShipToFleet(fleet, ship1);
+        _editor.AddShipToFleet(fleet, ship2);
+
+        // Act - repair each ship individually
+        _editor.RepairShip(ship1);
+        _editor.RepairShip(ship2);
+
+        // Assert
+        ship1.CurrentHullPoints.Should().Be(ship1.MaxHullPoints);
+        ship2.CurrentHullPoints.Should().Be(ship2.MaxHullPoints);
+    }
+
+    #endregion
+
+    #region Comprehensive Crew Quality Tests
+
+    [Theory]
+    [InlineData(CrewQuality.Regular)]
+    [InlineData(CrewQuality.Veteran)]
+    [InlineData(CrewQuality.Elite)]
+    public void SetCrewQuality_AllQualities_SetsCorrectly(CrewQuality quality)
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetCrewQuality(ship, quality);
+
+        // Assert
+        ship.CrewQuality.Should().Be(quality);
+    }
+
+    [Fact]
+    public void SetShipCrew_ToZero_SetsCorrectly()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        ship.CrewCount = 50;
+
+        // Act
+        _editor.SetShipCrew(ship, 0);
+
+        // Assert
+        ship.CrewCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void SetShipCrew_ToHalfCapacity_SetsCorrectly()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        var halfCapacity = ship.CrewCapacity / 2;
+
+        // Act
+        _editor.SetShipCrew(ship, halfCapacity);
+
+        // Assert
+        ship.CrewCount.Should().Be(halfCapacity);
+    }
+
+    #endregion
+
+    #region Ship Class Tests
+
+    [Fact]
+    public void SetFlagship_SetsShipClassToFlagship()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Act
+        _editor.SetFlagship(fleet, ship);
+
+        // Assert
+        ship.ShipClass.Should().Be(ShipClass.Flagship);
+    }
+
+    [Fact]
+    public void SetFlagship_NotInFleet_ThrowsException()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        // Ship not added to fleet
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetFlagship(fleet, ship))
+            .Should().Throw<EditorException>();
+    }
+
+    #endregion
+
+    #region Admiral Tests
+
+    [Fact]
+    public void SetAdmiral_ValidHero_SetsAdmiral()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetAdmiral(fleet, hero);
+
+        // Assert
+        fleet.Admiral.Should().Be(hero);
+        fleet.AdmiralId.Should().Be(hero.Id);
+    }
+
+    [Fact]
+    public void SetAdmiral_NullValue_ClearsAdmiral()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var hero = CreateTestHero();
+        _editor.SetAdmiral(fleet, hero);
+
+        // Act
+        _editor.SetAdmiral(fleet, null);
+
+        // Assert
+        fleet.Admiral.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetAdmiral_UpdatesHeroFleetReference()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetAdmiral(fleet, hero);
+
+        // Assert
+        hero.FleetId.Should().Be(fleet.Id);
+        hero.Fleet.Should().Be(fleet);
+    }
+
+    #endregion
+
+    #region Weapon Position Tests
+
+    [Theory]
+    [InlineData(WeaponPosition.Bow)]
+    [InlineData(WeaponPosition.Stern)]
+    public void AddWeapon_AllPositions_AddsCorrectly(WeaponPosition position)
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        var weapon = new ShipWeapon { Type = ShipWeaponType.Ballista, Position = position };
+
+        // Act
+        _editor.AddWeapon(ship, weapon);
+
+        // Assert
+        ship.Weapons.Should().Contain(w => w.Position == position);
+    }
+
+    [Theory]
+    [InlineData(ShipWeaponType.Ballista)]
+    [InlineData(ShipWeaponType.Catapult)]
+    [InlineData(ShipWeaponType.GreekFire)]
+    public void AddWeapon_AllTypes_AddsCorrectly(ShipWeaponType weaponType)
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        var weapon = new ShipWeapon { Type = weaponType, Position = WeaponPosition.Bow };
+
+        // Act
+        _editor.AddWeapon(ship, weapon);
+
+        // Assert
+        ship.Weapons.Should().Contain(w => w.Type == weaponType);
+    }
+
+    #endregion
+
+    #region Cargo Weight Tests
+
+    [Fact]
+    public void AddCargo_ChecksWeight()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        var cargo = new CargoItem { ItemId = "heavy", ItemName = "Heavy", Count = 1, Weight = 100 };
+
+        // Act
+        _editor.AddCargo(ship, cargo);
+
+        // Assert
+        ship.Cargo.Should().Contain(c => c.ItemId == "heavy");
+    }
+
+    [Fact]
+    public void RemoveCargo_MoreThanExists_RemovesAll()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        _editor.AddCargo(ship, new CargoItem { ItemId = "grain", ItemName = "Grain", Count = 5, Weight = 5 });
+
+        // Act
+        _editor.RemoveCargo(ship, "grain", 100);
+
+        // Assert
+        ship.Cargo.Should().NotContain(c => c.ItemId == "grain");
+    }
+
+    [Fact]
+    public void RemoveCargo_NonExistentItem_DoesNothing()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act - should not throw
+        _editor.RemoveCargo(ship, "nonexistent", 10);
+
+        // Assert
+        ship.Cargo.Should().BeEmpty();
+    }
+
+    #endregion
 }
