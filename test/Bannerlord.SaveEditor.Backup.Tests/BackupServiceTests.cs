@@ -593,4 +593,248 @@ public class BackupServiceTests : IDisposable
     }
 
     #endregion
+
+    #region Compression Tests
+
+    [Fact]
+    public async Task CreateSnapshotAsync_LZ4Compression_CompressesCorrectly()
+    {
+        // Arrange
+        var lz4Options = new BackupOptions
+        {
+            BackupDirectory = _backupDir,
+            Compression = BackupCompression.LZ4,
+            CreateManifests = true
+        };
+        using var lz4Service = new BackupService(lz4Options);
+        var savePath = CreateTestSaveFile("lz4test.sav");
+
+        // Act
+        var backup = await lz4Service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.BackupPath.Should().EndWith(".lz4");
+        File.Exists(backup.BackupPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RestoreAsync_LZ4Backup_DecompressesCorrectly()
+    {
+        // Arrange
+        var lz4Options = new BackupOptions
+        {
+            BackupDirectory = _backupDir,
+            Compression = BackupCompression.LZ4,
+            CreateManifests = true
+        };
+        using var lz4Service = new BackupService(lz4Options);
+        var savePath = CreateTestSaveFile("lz4restore.sav");
+        var backup = await lz4Service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+        var targetPath = Path.Combine(_testDir, "restored_lz4.sav");
+
+        // Act
+        await lz4Service.RestoreAsync(backup, targetPath);
+
+        // Assert
+        File.Exists(targetPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_GZipCompression_CompressesCorrectly()
+    {
+        // Arrange - use default GZip compression
+        var savePath = CreateTestSaveFile("gziptest.sav");
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.BackupPath.Should().EndWith(".gz");
+        File.Exists(backup.BackupPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RestoreAsync_GZipBackup_DecompressesCorrectly()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile("gziprestore.sav");
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+        var targetPath = Path.Combine(_testDir, "restored_gzip.sav");
+
+        // Act
+        await _service.RestoreAsync(backup, targetPath);
+
+        // Assert
+        File.Exists(targetPath).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Event Tests
+
+    [Fact]
+    public async Task CreateSnapshotAsync_RaisesBackupCreatedEvent()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        BackupCreatedEventArgs? eventArgs = null;
+        _service.BackupCreated += (sender, args) => eventArgs = args;
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        eventArgs.Should().NotBeNull();
+        eventArgs!.Backup.BackupPath.Should().Be(backup.BackupPath);
+    }
+
+    [Fact]
+    public async Task RestoreAsync_RaisesBackupRestoredEvent()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+        var targetPath = Path.Combine(_testDir, "event_restore.sav");
+        BackupRestoredEventArgs? eventArgs = null;
+        _service.BackupRestored += (sender, args) => eventArgs = args;
+
+        // Act
+        await _service.RestoreAsync(backup, targetPath);
+
+        // Assert
+        eventArgs.Should().NotBeNull();
+        eventArgs!.Result.Should().NotBeNull();
+    }
+
+    #endregion
+
+    #region Error Handling Tests
+
+    [Fact]
+    public async Task CreateSnapshotAsync_NonExistentSource_ThrowsBackupException()
+    {
+        // Arrange
+        var nonExistentPath = Path.Combine(_testDir, "nonexistent.sav");
+
+        // Act & Assert
+        await FluentActions.Invoking(() => 
+            _service.CreateSnapshotAsync(nonExistentPath, BackupTrigger.Manual))
+            .Should().ThrowAsync<BackupException>();
+    }
+
+    [Fact]
+    public async Task RestoreAsync_NonExistentBackup_ThrowsBackupException()
+    {
+        // Arrange
+        var fakeBackup = new BackupInfo
+        {
+            BackupPath = Path.Combine(_testDir, "fake.sav.gz"),
+            OriginalPath = "test.sav",
+            Trigger = BackupTrigger.Manual,
+            CreatedAt = DateTime.UtcNow
+        };
+        var targetPath = Path.Combine(_testDir, "restore_target.sav");
+
+        // Act & Assert
+        await FluentActions.Invoking(() => 
+            _service.RestoreAsync(fakeBackup, targetPath))
+            .Should().ThrowAsync<BackupException>();
+    }
+
+    [Fact]
+    public async Task GetLatestBackupAsync_NoBackups_ReturnsNull()
+    {
+        // Arrange
+        var nonExistentSave = Path.Combine(_testDir, "never_backed_up.sav");
+
+        // Act
+        var result = await _service.GetLatestBackupAsync(nonExistentSave);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    #endregion
+
+    #region Manifest Tests
+
+    [Fact]
+    public async Task CreateSnapshotAsync_WithManifestsEnabled_CreatesBackup()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile("manifest_test.sav");
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        File.Exists(backup.BackupPath).Should().BeTrue();
+        backup.BackupPath.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_WithoutManifests_StillCreatesBackup()
+    {
+        // Arrange
+        var noManifestOptions = new BackupOptions
+        {
+            BackupDirectory = _backupDir,
+            Compression = BackupCompression.GZip,
+            CreateManifests = false
+        };
+        using var noManifestService = new BackupService(noManifestOptions);
+        var savePath = CreateTestSaveFile("no_manifest_test.sav");
+
+        // Act
+        var backup = await noManifestService.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        File.Exists(backup.BackupPath).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Additional Coverage Tests
+
+    [Fact]
+    public async Task CreateSnapshotAsync_SetsBackupSize()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.BackupSize.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_SetsOriginalSize()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.OriginalSize.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_SetsCreatedAt()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        var beforeCreate = DateTime.UtcNow;
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.CreatedAt.Should().BeOnOrAfter(beforeCreate);
+    }
+
+    #endregion
 }
