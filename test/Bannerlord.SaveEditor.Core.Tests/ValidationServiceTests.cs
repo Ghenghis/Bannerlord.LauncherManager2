@@ -831,5 +831,72 @@ public class ValidationServiceTests
     }
 
     #endregion
-}
 
+    #region Comprehensive ValidationSeverity Tests
+
+    [Theory]
+    [InlineData(ValidationSeverity.Error)]
+    [InlineData(ValidationSeverity.Warning)]
+    [InlineData(ValidationSeverity.Info)]
+    public void ValidationIssue_AllSeverities_CanBeCreated(ValidationSeverity severity)
+    {
+        // Arrange & Act
+        var issue = new ValidationIssue(severity, "CODE", "Message");
+
+        // Assert
+        issue.Severity.Should().Be(severity);
+    }
+
+    [Fact]
+    public void ValidationSeverity_Error_HasExpectedValue()
+    {
+        // Assert
+        ((int)ValidationSeverity.Error).Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void ValidationSeverity_Warning_HasExpectedValue()
+    {
+        // Assert
+        ((int)ValidationSeverity.Warning).Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    #endregion
+
+    #region Comprehensive Path Tests
+
+    [Fact]
+    public void ValidationIssue_WithPath_PreservesPath()
+    {
+        // Arrange
+        var issue = new ValidationIssue(ValidationSeverity.Error, "CODE", "Message", "Hero.Health");
+
+        // Act & Assert
+        issue.Path.Should().Be("Hero.Health");
+    }
+
+    [Fact]
+    public void ValidationIssue_WithNullPath_HasNullPath()
+    {
+        // Arrange
+        var issue = new ValidationIssue(ValidationSeverity.Error, "CODE", "Message");
+
+        // Act & Assert
+        issue.Path.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("Hero.Name")]
+    [InlineData("Party.Troops[0]")]
+    [InlineData("Save.Header.Version")]
+    public void ValidationIssue_VariousPaths_ArePreserved(string path)
+    {
+        // Arrange & Act
+        var issue = new ValidationIssue(ValidationSeverity.Error, "CODE", "Message", path);
+
+        // Assert
+        issue.Path.Should().Be(path);
+    }
+
+    #endregion
+}
