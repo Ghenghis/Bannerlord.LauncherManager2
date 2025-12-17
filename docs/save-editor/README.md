@@ -32,24 +32,21 @@ dotnet build Bannerlord.SaveEditor.sln -c Release
 
 ```csharp
 using Bannerlord.SaveEditor.Core.Services;
-using Bannerlord.SaveEditor.Core.Interfaces;
+using Bannerlord.SaveEditor.Core.Parsers;
 
-// Create service
-var saveService = new SaveService();
-
-// Discover saves
-var saves = await saveService.DiscoverSavesAsync();
-
-// Load a save
-var save = await saveService.LoadAsync(saves[0].Path);
+// Create parser and load save
+var parser = new SaveParser();
+var save = await parser.LoadAsync("path/to/save.sav");
 
 // Edit character
 var characterEditor = new CharacterEditor();
-await characterEditor.SetGoldAsync(save.MainHero, 100000);
-await characterEditor.SetLevelAsync(save.MainHero, 30);
+characterEditor.SetGold(save.Heroes[0], 100000);
+characterEditor.SetLevel(save.Heroes[0], 30);
+characterEditor.SetAttribute(save.Heroes[0], AttributeType.Vigor, 10);
 
 // Save changes
-await saveService.SaveAsync(save);
+var writer = new SaveWriter();
+await writer.SaveAsync(save, "path/to/save.sav");
 ```
 
 ## Documentation

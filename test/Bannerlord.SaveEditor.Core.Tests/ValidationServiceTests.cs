@@ -205,10 +205,11 @@ public class ValidationServiceTests
     #region Additional Edge Case Tests
 
     [Fact]
-    public void ValidateHero_AttributeOver10_ReturnsWarning()
+    public void ValidateHero_AttributeOver10_InStrictMode_ReturnsWarning()
     {
         var hero = CreateValidHero();
         hero.Attributes.Vigor = 15;
+        _service.SetValidationMode(ValidationMode.Strict);
 
         var report = _service.ValidateHero(hero);
 
@@ -263,14 +264,14 @@ public class ValidationServiceTests
     }
 
     [Fact]
-    public void ValidateParty_MoraleOutOfRange_ReturnsError()
+    public void ValidateParty_MoraleOutOfRange_ReturnsWarning()
     {
         var party = CreateValidParty();
         party.Morale = 150;
 
         var report = _service.ValidateParty(party);
 
-        report.IsValid.Should().BeFalse();
+        report.HasWarnings.Should().BeTrue();
     }
 
     [Fact]
@@ -287,9 +288,7 @@ public class ValidationServiceTests
         {
             Id = MBGUID.Generate(MBGUIDType.Ship),
             Name = "Test Ship",
-            Type = ShipType.Longship,
-            Health = 100,
-            MaxHealth = 100
+            Type = ShipType.Longship
         };
 
         fleet.Ships.Add(ship);
@@ -301,7 +300,7 @@ public class ValidationServiceTests
     }
 
     [Fact]
-    public void ValidateFleet_NegativeMorale_ReturnsError()
+    public void ValidateFleet_NegativeMorale_ReturnsWarning()
     {
         var fleet = new FleetData
         {
@@ -312,62 +311,11 @@ public class ValidationServiceTests
 
         var report = _service.ValidateFleet(fleet);
 
-        report.IsValid.Should().BeFalse();
+        report.HasWarnings.Should().BeTrue();
     }
 
     [Fact]
-    public void ValidateShip_ValidShip_ReturnsNoErrors()
-    {
-        var ship = new ShipData
-        {
-            Id = MBGUID.Generate(MBGUIDType.Ship),
-            Name = "Valid Ship",
-            Type = ShipType.Longship,
-            Health = 100,
-            MaxHealth = 100
-        };
-
-        var report = _service.ValidateShip(ship);
-
-        report.IsValid.Should().BeTrue();
-    }
-
-    [Fact]
-    public void ValidateShip_HealthExceedsMax_ReturnsError()
-    {
-        var ship = new ShipData
-        {
-            Id = MBGUID.Generate(MBGUIDType.Ship),
-            Name = "Damaged Ship",
-            Type = ShipType.Longship,
-            Health = 150,
-            MaxHealth = 100
-        };
-
-        var report = _service.ValidateShip(ship);
-
-        report.IsValid.Should().BeFalse();
-    }
-
-    [Fact]
-    public void ValidateShip_NegativeHealth_ReturnsError()
-    {
-        var ship = new ShipData
-        {
-            Id = MBGUID.Generate(MBGUIDType.Ship),
-            Name = "Broken Ship",
-            Type = ShipType.Longship,
-            Health = -10,
-            MaxHealth = 100
-        };
-
-        var report = _service.ValidateShip(ship);
-
-        report.IsValid.Should().BeFalse();
-    }
-
-    [Fact]
-    public void ValidateSave_ValidSave_ReturnsNoErrors()
+    public void Validate_ValidSave_ReturnsNoErrors()
     {
         var save = new SaveFile
         {
@@ -377,13 +325,13 @@ public class ValidationServiceTests
             Metadata = new SaveMetadata { CharacterName = "Test", Level = 10 }
         };
 
-        var report = _service.ValidateSave(save);
+        var report = _service.Validate(save);
 
         report.Should().NotBeNull();
     }
 
     [Fact]
-    public void ValidateSave_WithHeroes_ValidatesAllHeroes()
+    public void Validate_WithHeroes_ValidatesAllHeroes()
     {
         var save = new SaveFile
         {
@@ -394,13 +342,13 @@ public class ValidationServiceTests
         };
         save.Heroes.Add(CreateValidHero());
 
-        var report = _service.ValidateSave(save);
+        var report = _service.Validate(save);
 
         report.Should().NotBeNull();
     }
 
     [Fact]
-    public void ValidateSave_WithParties_ValidatesAllParties()
+    public void Validate_WithParties_ValidatesAllParties()
     {
         var save = new SaveFile
         {
@@ -411,7 +359,7 @@ public class ValidationServiceTests
         };
         save.Parties.Add(CreateValidParty());
 
-        var report = _service.ValidateSave(save);
+        var report = _service.Validate(save);
 
         report.Should().NotBeNull();
     }

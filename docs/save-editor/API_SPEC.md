@@ -85,57 +85,92 @@ Task<int> PruneBackupsAsync(RetentionPolicy policy, CancellationToken ct = defau
 ```
 Prunes old backups according to retention policy.
 
-## ICharacterEditor
+## CharacterEditor
 
-Interface for character editing.
-
-### Methods
-
-#### SetLevelAsync
-```csharp
-Task<EditResult> SetLevelAsync(HeroData hero, int level, CancellationToken ct = default);
-```
-
-#### SetGoldAsync
-```csharp
-Task<EditResult> SetGoldAsync(HeroData hero, int gold, CancellationToken ct = default);
-```
-
-#### SetAttributeAsync
-```csharp
-Task<EditResult> SetAttributeAsync(HeroData hero, AttributeType attribute, int value, CancellationToken ct = default);
-```
-
-#### SetSkillLevelAsync
-```csharp
-Task<EditResult> SetSkillLevelAsync(HeroData hero, string skillId, int level, CancellationToken ct = default);
-```
-
-#### AddPerkAsync
-```csharp
-Task<EditResult> AddPerkAsync(HeroData hero, string perkId, CancellationToken ct = default);
-```
-
-## IFleetEditor (War Sails)
-
-Interface for fleet and ship editing.
+Service for character editing (synchronous methods).
 
 ### Methods
 
-#### RepairShipAsync
+#### SetLevel
 ```csharp
-Task<EditResult> RepairShipAsync(ShipData ship, CancellationToken ct = default);
+void SetLevel(HeroData hero, int level);
 ```
+Sets the hero's level.
 
-#### AddUpgradeAsync
+#### SetGold
 ```csharp
-Task<EditResult> AddUpgradeAsync(ShipData ship, ShipUpgrade upgrade, CancellationToken ct = default);
+void SetGold(HeroData hero, int gold);
 ```
+Sets the hero's gold amount.
 
-#### SetCrewCountAsync
+#### SetAttribute
 ```csharp
-Task<EditResult> SetCrewCountAsync(ShipData ship, int count, CancellationToken ct = default);
+void SetAttribute(HeroData hero, AttributeType attribute, int value);
 ```
+Sets a specific attribute value.
+
+#### SetSkill
+```csharp
+void SetSkill(HeroData hero, SkillType skill, int value);
+```
+Sets a skill level (0-300).
+
+#### UnlockPerk / RemovePerk
+```csharp
+void UnlockPerk(HeroData hero, string perkId);
+void RemovePerk(HeroData hero, string perkId);
+```
+Manages hero perks.
+
+#### SetNavalSkill
+```csharp
+void SetNavalSkill(HeroData hero, NavalSkillType skill, int value);
+```
+Sets naval skill level (War Sails).
+
+#### ExportTemplate / ImportTemplate
+```csharp
+CharacterTemplate ExportTemplate(HeroData hero);
+void ImportTemplate(HeroData hero, CharacterTemplate template, TemplateImportOptions options);
+```
+Export/import character templates.
+
+## FleetEditor (War Sails)
+
+Service for fleet and ship editing (synchronous methods).
+
+### Methods
+
+#### RepairShip
+```csharp
+void RepairShip(ShipData ship);
+```
+Restores ship hull to maximum.
+
+#### AddUpgrade / RemoveUpgrade
+```csharp
+void AddUpgrade(ShipData ship, ShipUpgrade upgrade);
+void RemoveUpgrade(ShipData ship, ShipUpgrade upgrade);
+```
+Manages ship upgrades.
+
+#### SetCrewCount
+```csharp
+void SetCrewCount(ShipData ship, int count);
+```
+Sets the crew count.
+
+#### TransferShip
+```csharp
+void TransferShip(ShipData ship, FleetData sourceFleet, FleetData targetFleet);
+```
+Transfers ship between fleets.
+
+#### SetFlagship
+```csharp
+void SetFlagship(FleetData fleet, ShipData ship);
+```
+Sets the fleet flagship.
 
 ## Data Models
 
@@ -161,13 +196,17 @@ public class HeroData
 {
     public MBGUID Id { get; set; }
     public string Name { get; set; }
+    public string HeroId { get; set; }
     public int Level { get; set; }
-    public int Experience { get; set; }
+    public int Age { get; set; }
     public int Gold { get; set; }
+    public int Health { get; set; }
+    public HeroState State { get; set; }
     public HeroAttributes Attributes { get; set; }
     public SkillSet Skills { get; set; }
-    public ISet<string> Perks { get; set; }
-    public bool IsMainHero { get; set; }
+    public NavalSkillSet? NavalSkills { get; set; } // War Sails
+    public ISet<string> UnlockedPerks { get; set; }
+    public AppearanceData? Appearance { get; set; }
     public bool IsAlive { get; set; }
 }
 ```
@@ -192,10 +231,13 @@ public class ShipData
     public MBGUID Id { get; set; }
     public string Name { get; set; }
     public ShipType Type { get; set; }
-    public int CurrentHull { get; set; }
-    public int MaxHull { get; set; }
+    public int CurrentHullPoints { get; set; }
+    public int MaxHullPoints { get; set; }
     public int CrewCount { get; set; }
-    public int MaxCrew { get; set; }
+    public int CrewCapacity { get; set; }
+    public float CargoCapacity { get; set; }
+    public float CurrentCargoWeight { get; set; }
+    public float CrewMorale { get; set; }
     public ISet<ShipUpgrade> Upgrades { get; set; }
 }
 ```

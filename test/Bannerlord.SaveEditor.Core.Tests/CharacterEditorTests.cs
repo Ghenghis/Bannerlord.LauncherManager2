@@ -471,7 +471,7 @@ public class CharacterEditorTests
         {
             Attributes = new HeroAttributes(),
             Skills = new SkillSet(),
-            Appearance = new AppearanceData { BodyProperties = "test_body" },
+            Appearance = new AppearanceData { FaceCode = "test_face" },
             Perks = new List<string>()
         };
         var options = new TemplateImportOptions { ImportAppearance = true };
@@ -481,7 +481,7 @@ public class CharacterEditorTests
 
         // Assert
         hero.Appearance.Should().NotBeNull();
-        hero.Appearance!.BodyProperties.Should().Be("test_body");
+        hero.Appearance!.FaceCode.Should().Be("test_face");
     }
 
     [Fact]
@@ -504,14 +504,14 @@ public class CharacterEditorTests
     {
         // Arrange
         var hero = CreateTestHero();
-        hero.Appearance = new AppearanceData { BodyProperties = "exported_body" };
+        hero.Appearance = new AppearanceData { FaceCode = "exported_face" };
 
         // Act
         var template = _editor.ExportTemplate(hero);
 
         // Assert
         template.Appearance.Should().NotBeNull();
-        template.Appearance!.BodyProperties.Should().Be("exported_body");
+        template.Appearance!.FaceCode.Should().Be("exported_face");
     }
 
     #endregion
