@@ -868,4 +868,165 @@ public class CharacterEditorTests
     }
 
     #endregion
+
+    #region Naval Skills Tests
+
+    [Fact]
+    public void SetNavalSkill_Navigation_SetsValue()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetNavalSkill(hero, NavalSkillType.Navigation, 150);
+
+        // Assert
+        hero.NavalSkills!.Navigation.Should().Be(150);
+    }
+
+    [Fact]
+    public void SetNavalSkill_NavalTactics_SetsValue()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetNavalSkill(hero, NavalSkillType.NavalTactics, 200);
+
+        // Assert
+        hero.NavalSkills!.NavalTactics.Should().Be(200);
+    }
+
+    [Fact]
+    public void SetNavalSkill_NavalStewardship_SetsValue()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetNavalSkill(hero, NavalSkillType.NavalStewardship, 100);
+
+        // Assert
+        hero.NavalSkills!.NavalStewardship.Should().Be(100);
+    }
+
+    [Fact]
+    public void SetNavalSkill_NegativeNavigation_ThrowsException()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetNavalSkill(hero, NavalSkillType.Navigation, -10))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void SetNavalSkill_ExceedsMaxNavigation_ThrowsException()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetNavalSkill(hero, NavalSkillType.Navigation, 350))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void MaximizeNavalSkills_SetsAllToMax()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.MaximizeNavalSkills(hero);
+
+        // Assert
+        hero.NavalSkills!.Navigation.Should().Be(300);
+        hero.NavalSkills.NavalTactics.Should().Be(300);
+        hero.NavalSkills.NavalStewardship.Should().Be(300);
+    }
+
+    #endregion
+
+
+    #region Attribute Tests Extended
+
+    [Fact]
+    public void AddAttributePoints_AddsToExisting()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        hero.Attributes.Vigor = 5;
+
+        // Act
+        _editor.AddAttributePoints(hero, AttributeType.Vigor, 3);
+
+        // Assert
+        hero.Attributes.Vigor.Should().Be(8);
+    }
+
+    [Fact]
+    public void SetAllAttributes_SetsAllToValue()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetAllAttributes(hero, 10);
+
+        // Assert
+        hero.Attributes.Vigor.Should().Be(10);
+        hero.Attributes.Control.Should().Be(10);
+        hero.Attributes.Endurance.Should().Be(10);
+        hero.Attributes.Cunning.Should().Be(10);
+        hero.Attributes.Social.Should().Be(10);
+        hero.Attributes.Intelligence.Should().Be(10);
+    }
+
+    [Fact]
+    public void GetExpectedAttributePoints_Level10_Returns16()
+    {
+        // Act
+        var result = _editor.GetExpectedAttributePoints(10);
+
+        // Assert - Base 6 + level
+        result.Should().Be(16);
+    }
+
+    #endregion
+
+    #region Skill XP Tests
+
+    [Fact]
+    public void AddSkillXP_LargeAmount_IncreasesSkill()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        hero.Skills.OneHanded = 100;
+
+        // Act
+        _editor.AddSkillXP(hero, SkillType.OneHanded, 5000);
+
+        // Assert
+        hero.Skills.OneHanded.Should().BeGreaterThan(100);
+    }
+
+    [Fact]
+    public void MaximizeSkills_SetsAllToMax()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.MaximizeSkills(hero);
+
+        // Assert
+        hero.Skills.OneHanded.Should().Be(300);
+        hero.Skills.TwoHanded.Should().Be(300);
+        hero.Skills.Athletics.Should().Be(300);
+    }
+
+    #endregion
+
 }
