@@ -1062,4 +1062,53 @@ public sealed class SaveWriterTests : IDisposable
     }
 
     #endregion
+
+    #region Comprehensive Header Tests
+
+    [Fact]
+    public async Task SaveAsync_HeaderVersion_IsPreserved()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "header_version.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Header.Version.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task SaveAsync_HeaderCompressedSize_IsPositive()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "header_compressed.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Header.CompressedSize.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task SaveAsync_HeaderUncompressedSize_IsPositive()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "header_uncompressed.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Header.UncompressedSize.Should().BeGreaterThan(0);
+    }
+
+    #endregion
 }
