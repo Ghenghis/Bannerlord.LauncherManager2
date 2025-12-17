@@ -888,4 +888,178 @@ public sealed class SaveWriterTests : IDisposable
     }
 
     #endregion
+
+    #region Comprehensive Path Tests
+
+    [Fact]
+    public async Task SaveAsync_ValidPath_CreatesFile()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "valid_path.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+
+        // Assert
+        File.Exists(savePath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveAsync_PathWithSpaces_CreatesFile()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var subDir = Path.Combine(_testDirectory, "path with spaces");
+        Directory.CreateDirectory(subDir);
+        var savePath = Path.Combine(subDir, "save file.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+
+        // Assert
+        File.Exists(savePath).Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Comprehensive Header Tests
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(7)]
+    public async Task SaveAsync_VariousVersions_PreservesVersion(int version)
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Header.Version = version;
+        var savePath = Path.Combine(_testDirectory, $"version_{version}.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Header.Version.Should().Be(version);
+    }
+
+    [Theory]
+    [InlineData("v1.0.0")]
+    [InlineData("v1.2.10.12345")]
+    [InlineData("e2.0.0")]
+    public async Task SaveAsync_VariousGameVersions_PreservesGameVersion(string gameVersion)
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Header.GameVersion = gameVersion;
+        var savePath = Path.Combine(_testDirectory, $"gameversion_{gameVersion.Replace(".", "_")}.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Header.GameVersion.Should().Be(gameVersion);
+    }
+
+    #endregion
+
+    #region Comprehensive Metadata Tests
+
+    [Theory]
+    [InlineData("TestPlayer")]
+    [InlineData("Player With Spaces")]
+    [InlineData("")]
+    public async Task SaveAsync_VariousCharacterNames_PreservesName(string name)
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Metadata.CharacterName = name;
+        var savePath = Path.Combine(_testDirectory, $"name_{name.GetHashCode()}.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Metadata.CharacterName.Should().Be(name);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(25)]
+    [InlineData(62)]
+    public async Task SaveAsync_VariousLevels_PreservesLevel(int level)
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Metadata.Level = level;
+        var savePath = Path.Combine(_testDirectory, $"level_{level}.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Metadata.Level.Should().Be(level);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(100)]
+    [InlineData(1000)]
+    public async Task SaveAsync_VariousDayNumbers_PreservesDayNumber(int day)
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Metadata.DayNumber = day;
+        var savePath = Path.Combine(_testDirectory, $"day_{day}.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Metadata.DayNumber.Should().Be(day);
+    }
+
+    #endregion
+
+    #region Comprehensive Error Handling Tests
+
+    [Fact]
+    public async Task SaveAsync_NullSave_ThrowsException()
+    {
+        // Arrange
+        var savePath = Path.Combine(_testDirectory, "null.sav");
+
+        // Act & Assert
+        await FluentActions.Invoking(() => _writer.SaveAsync(null!, savePath))
+            .Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task SaveAsync_NullPath_ThrowsException()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+
+        // Act & Assert
+        await FluentActions.Invoking(() => _writer.SaveAsync(save, null!))
+            .Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task SaveAsync_EmptyPath_ThrowsException()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+
+        // Act & Assert
+        await FluentActions.Invoking(() => _writer.SaveAsync(save, string.Empty))
+            .Should().ThrowAsync<Exception>();
+    }
+
+    #endregion
 }
