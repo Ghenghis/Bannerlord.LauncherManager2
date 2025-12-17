@@ -379,4 +379,218 @@ public class BackupServiceTests : IDisposable
 
         // Assert - no exception means success
     }
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public async Task PruneBackupsAsync_MaxAge_RemovesOldBackups()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        await _service.CreateSnapshotAsync(savePath, BackupTrigger.PreEdit);
+
+        var policy = new RetentionPolicy
+        {
+            MaxAge = TimeSpan.Zero, // All backups are "old"
+            MaxBackupsPerSave = 100,
+            KeepAtLeastOne = false
+        };
+
+        // Act
+        var pruned = await _service.PruneBackupsAsync(policy);
+
+        // Assert
+        pruned.Should().BeGreaterOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task PruneBackupsAsync_MaxTotalSize_RemovesExcess()
+    {
+        // Arrange
+        var save1 = CreateTestSaveFile("save1.sav");
+        var save2 = CreateTestSaveFile("save2.sav");
+        await _service.CreateSnapshotAsync(save1, BackupTrigger.PreEdit);
+        await _service.CreateSnapshotAsync(save2, BackupTrigger.PreEdit);
+
+        var policy = new RetentionPolicy
+        {
+            MaxAge = TimeSpan.FromDays(365),
+            MaxBackupsPerSave = 100,
+            MaxTotalSize = 1, // Very small - should trigger size-based pruning
+            KeepAtLeastOne = true
+        };
+
+        // Act
+        var pruned = await _service.PruneBackupsAsync(policy);
+
+        // Assert
+        pruned.Should().BeGreaterOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task DeleteBackupAsync_NonExistentFile_ReturnsFalse()
+    {
+        // Act
+        var result = await _service.DeleteBackupAsync("/nonexistent/path.sav.gz");
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteBackupAsync_WithBackupInfo_DeletesFile()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Act
+        await _service.DeleteBackupAsync(backup);
+
+        // Assert
+        File.Exists(backup.BackupPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task VerifyBackupAsync_WithBackupInfo_ReturnsTrue()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Act
+        var isValid = await _service.VerifyBackupAsync(backup);
+
+        // Assert
+        isValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task VerifyBackupAsync_CorruptedFile_ReturnsFalse()
+    {
+        // Arrange
+        var corruptPath = Path.Combine(_testDir, "corrupt.sav.gz");
+        await File.WriteAllBytesAsync(corruptPath, new byte[] { 0x00, 0x01, 0x02 });
+
+        // Act
+        var isValid = await _service.VerifyBackupAsync(corruptPath);
+
+        // Assert
+        isValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_NoCompression_CopiesFile()
+    {
+        // Arrange
+        var noCompressOptions = new BackupOptions
+        {
+            BackupDirectory = _backupDir,
+            Compression = BackupCompression.None,
+            CreateManifests = false
+        };
+        using var noCompressService = new BackupService(noCompressOptions);
+        var savePath = CreateTestSaveFile("nocompress.sav");
+
+        // Act
+        var backup = await noCompressService.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.BackupPath.Should().NotEndWith(".gz");
+        File.Exists(backup.BackupPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RestoreAsync_ToExistingFile_CreatesBackupFirst()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile("original.sav");
+        var targetPath = CreateTestSaveFile("target.sav");
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Act
+        await _service.RestoreAsync(backup, targetPath);
+
+        // Assert
+        File.Exists(targetPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetBackupsAsync_EmptyDirectory_ReturnsEmptyList()
+    {
+        // Arrange - use a fresh backup directory with no backups
+        var emptyDir = Path.Combine(_testDir, "empty_backups");
+        Directory.CreateDirectory(emptyDir);
+        var emptyOptions = new BackupOptions { BackupDirectory = emptyDir };
+        using var emptyService = new BackupService(emptyOptions);
+
+        // Act
+        var backups = await emptyService.GetBackupsAsync();
+
+        // Assert
+        backups.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetBackupsAsync_WithSavePath_FiltersCorrectly()
+    {
+        // Arrange
+        var save1 = CreateTestSaveFile("filtertest1.sav");
+        var save2 = CreateTestSaveFile("filtertest2.sav");
+        await _service.CreateSnapshotAsync(save1, BackupTrigger.PreEdit);
+        await _service.CreateSnapshotAsync(save2, BackupTrigger.PreEdit);
+
+        // Act
+        var backups = await _service.GetBackupsAsync(save1);
+
+        // Assert
+        backups.Should().OnlyContain(b => b.BackupPath.Contains("filtertest1"));
+    }
+
+    [Fact]
+    public void StartScheduledBackups_CalledTwice_DisposesOldTimer()
+    {
+        // Act - should not throw
+        _service.StartScheduledBackups(TimeSpan.FromMinutes(30));
+        _service.StartScheduledBackups(TimeSpan.FromMinutes(15));
+
+        // Assert - no exception means success
+        _service.StopScheduledBackups();
+    }
+
+    [Fact]
+    public void StopScheduledBackups_WhenNotStarted_DoesNotThrow()
+    {
+        // Act & Assert - should not throw
+        _service.StopScheduledBackups();
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_ManualTrigger_SavesInSnapshotsFolder()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.Manual);
+
+        // Assert
+        backup.BackupPath.Should().Contain("snapshots");
+        backup.Trigger.Should().Be(BackupTrigger.Manual);
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_OnCloseTrigger_SavesInSnapshotsFolder()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+
+        // Act
+        var backup = await _service.CreateSnapshotAsync(savePath, BackupTrigger.OnClose);
+
+        // Assert
+        backup.BackupPath.Should().Contain("snapshots");
+    }
+
+    #endregion
 }

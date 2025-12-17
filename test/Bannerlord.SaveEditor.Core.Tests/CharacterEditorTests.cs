@@ -253,4 +253,266 @@ public class CharacterEditorTests
         // Assert
         report.Should().NotBeNull();
     }
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public void SetAttribute_AllAttributeTypes_SetsCorrectly()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert - test all attribute types
+        _editor.SetAttribute(hero, AttributeType.Vigor, 5);
+        hero.Attributes.Vigor.Should().Be(5);
+
+        _editor.SetAttribute(hero, AttributeType.Control, 6);
+        hero.Attributes.Control.Should().Be(6);
+
+        _editor.SetAttribute(hero, AttributeType.Endurance, 7);
+        hero.Attributes.Endurance.Should().Be(7);
+
+        _editor.SetAttribute(hero, AttributeType.Cunning, 8);
+        hero.Attributes.Cunning.Should().Be(8);
+
+        _editor.SetAttribute(hero, AttributeType.Social, 9);
+        hero.Attributes.Social.Should().Be(9);
+
+        _editor.SetAttribute(hero, AttributeType.Intelligence, 10);
+        hero.Attributes.Intelligence.Should().Be(10);
+    }
+
+    [Fact]
+    public void SetSkill_AllSkillTypes_SetsCorrectly()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert - test multiple skill types
+        _editor.SetSkill(hero, SkillType.TwoHanded, 100);
+        hero.Skills.TwoHanded.Should().Be(100);
+
+        _editor.SetSkill(hero, SkillType.Polearm, 150);
+        hero.Skills.Polearm.Should().Be(150);
+
+        _editor.SetSkill(hero, SkillType.Bow, 200);
+        hero.Skills.Bow.Should().Be(200);
+
+        _editor.SetSkill(hero, SkillType.Crossbow, 250);
+        hero.Skills.Crossbow.Should().Be(250);
+    }
+
+    [Fact]
+    public void SetAllSkills_SetsAllToValue()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.SetAllSkills(hero, 100);
+
+        // Assert
+        hero.Skills.OneHanded.Should().Be(100);
+        hero.Skills.TwoHanded.Should().Be(100);
+        hero.Skills.Bow.Should().Be(100);
+    }
+
+    [Fact]
+    public void MaximizeSkills_SetsAllTo300()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.MaximizeSkills(hero);
+
+        // Assert
+        hero.Skills.OneHanded.Should().Be(300);
+        hero.Skills.TwoHanded.Should().Be(300);
+    }
+
+    [Fact]
+    public void SetNavalSkill_AllNavalSkillTypes_SetsCorrectly()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert
+        _editor.SetNavalSkill(hero, NavalSkillType.Navigation, 100);
+        hero.NavalSkills!.Navigation.Should().Be(100);
+
+        _editor.SetNavalSkill(hero, NavalSkillType.NavalTactics, 150);
+        hero.NavalSkills.NavalTactics.Should().Be(150);
+
+        _editor.SetNavalSkill(hero, NavalSkillType.NavalStewardship, 200);
+        hero.NavalSkills.NavalStewardship.Should().Be(200);
+    }
+
+    [Fact]
+    public void SetNavalSkill_NegativeValue_ThrowsException()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetNavalSkill(hero, NavalSkillType.Navigation, -1))
+            .Should().Throw<Exception>();
+    }
+
+    [Fact]
+    public void SetNavalSkill_ExceedsMax_ThrowsException()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetNavalSkill(hero, NavalSkillType.Navigation, 301))
+            .Should().Throw<Exception>();
+    }
+
+    [Fact]
+    public void MaximizeNavalSkills_SetsAllTo300()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+
+        // Act
+        _editor.MaximizeNavalSkills(hero);
+
+        // Assert
+        hero.NavalSkills.Should().NotBeNull();
+        hero.NavalSkills!.Navigation.Should().Be(300);
+        hero.NavalSkills.NavalTactics.Should().Be(300);
+        hero.NavalSkills.NavalStewardship.Should().Be(300);
+    }
+
+    [Fact]
+    public void AddSkillXP_IncreasesSkill()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        hero.Skills.OneHanded = 50;
+
+        // Act
+        _editor.AddSkillXP(hero, SkillType.OneHanded, 10000);
+
+        // Assert
+        hero.Skills.OneHanded.Should().BeGreaterThan(50);
+    }
+
+    [Fact]
+    public void GetExpectedAttributePoints_ReturnsCorrectValue()
+    {
+        // Act
+        var points = _editor.GetExpectedAttributePoints(10);
+
+        // Assert
+        points.Should().Be(16); // 6 base + 10 level
+    }
+
+    [Fact]
+    public void ImportTemplate_PartialImport_OnlyImportsSelected()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        hero.Attributes.Vigor = 5;
+        hero.Skills.OneHanded = 100;
+
+        var template = new CharacterTemplate
+        {
+            Attributes = new HeroAttributes { Vigor = 10 },
+            Skills = new SkillSet { OneHanded = 250 },
+            Perks = new List<string> { "test_perk" }
+        };
+        var options = new TemplateImportOptions
+        {
+            ImportAttributes = true,
+            ImportSkills = false,
+            ImportPerks = false
+        };
+
+        // Act
+        _editor.ImportTemplate(hero, template, options);
+
+        // Assert
+        hero.Attributes.Vigor.Should().Be(10); // Imported
+        hero.Skills.OneHanded.Should().Be(100); // Not imported
+        hero.UnlockedPerks.Should().NotContain("test_perk"); // Not imported
+    }
+
+    [Fact]
+    public void ImportTemplate_WithNavalSkills_ImportsNavalSkills()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        var template = new CharacterTemplate
+        {
+            Attributes = new HeroAttributes(),
+            Skills = new SkillSet(),
+            NavalSkills = new NavalSkillSet { Navigation = 200 },
+            Perks = new List<string>()
+        };
+        var options = new TemplateImportOptions { ImportNavalSkills = true };
+
+        // Act
+        _editor.ImportTemplate(hero, template, options);
+
+        // Assert
+        hero.NavalSkills.Should().NotBeNull();
+        hero.NavalSkills!.Navigation.Should().Be(200);
+    }
+
+    [Fact]
+    public void ImportTemplate_WithAppearance_ImportsAppearance()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        var template = new CharacterTemplate
+        {
+            Attributes = new HeroAttributes(),
+            Skills = new SkillSet(),
+            Appearance = new AppearanceData { BodyProperties = "test_body" },
+            Perks = new List<string>()
+        };
+        var options = new TemplateImportOptions { ImportAppearance = true };
+
+        // Act
+        _editor.ImportTemplate(hero, template, options);
+
+        // Assert
+        hero.Appearance.Should().NotBeNull();
+        hero.Appearance!.BodyProperties.Should().Be("test_body");
+    }
+
+    [Fact]
+    public void ExportTemplate_WithNavalSkills_IncludesNavalSkills()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        hero.NavalSkills = new NavalSkillSet { Navigation = 150 };
+
+        // Act
+        var template = _editor.ExportTemplate(hero);
+
+        // Assert
+        template.NavalSkills.Should().NotBeNull();
+        template.NavalSkills!.Navigation.Should().Be(150);
+    }
+
+    [Fact]
+    public void ExportTemplate_WithAppearance_IncludesAppearance()
+    {
+        // Arrange
+        var hero = CreateTestHero();
+        hero.Appearance = new AppearanceData { BodyProperties = "exported_body" };
+
+        // Act
+        var template = _editor.ExportTemplate(hero);
+
+        // Assert
+        template.Appearance.Should().NotBeNull();
+        template.Appearance!.BodyProperties.Should().Be("exported_body");
+    }
+
+    #endregion
 }

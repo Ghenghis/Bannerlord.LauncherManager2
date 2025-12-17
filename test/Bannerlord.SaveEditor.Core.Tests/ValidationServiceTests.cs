@@ -201,4 +201,220 @@ public class ValidationServiceTests
             State = PartyState.Active
         };
     }
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public void ValidateHero_AttributeOver10_ReturnsWarning()
+    {
+        var hero = CreateValidHero();
+        hero.Attributes.Vigor = 15;
+
+        var report = _service.ValidateHero(hero);
+
+        report.HasWarnings.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateHero_MultipleErrors_ReturnsAllErrors()
+    {
+        var hero = CreateValidHero();
+        hero.Attributes.Vigor = -1;
+        hero.Skills.OneHanded = -1;
+        hero.Gold = -100;
+
+        var report = _service.ValidateHero(hero);
+
+        report.IsValid.Should().BeFalse();
+        report.Errors.Count.Should().BeGreaterOrEqualTo(3);
+    }
+
+    [Fact]
+    public void ValidateParty_ValidParty_ReturnsNoErrors()
+    {
+        var party = CreateValidParty();
+        party.Troops.Add(new TroopStack { TroopName = "Soldier", Count = 10, WoundedCount = 2 });
+
+        var report = _service.ValidateParty(party);
+
+        report.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateParty_NegativeGold_ReturnsError()
+    {
+        var party = CreateValidParty();
+        party.Gold = -100;
+
+        var report = _service.ValidateParty(party);
+
+        report.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateParty_NegativeFood_ReturnsError()
+    {
+        var party = CreateValidParty();
+        party.Food = -50;
+
+        var report = _service.ValidateParty(party);
+
+        report.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateParty_MoraleOutOfRange_ReturnsError()
+    {
+        var party = CreateValidParty();
+        party.Morale = 150;
+
+        var report = _service.ValidateParty(party);
+
+        report.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateFleet_ValidFleet_ReturnsNoErrors()
+    {
+        var fleet = new FleetData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Fleet),
+            Name = "Valid Fleet",
+            Morale = 50
+        };
+
+        var ship = new ShipData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Ship),
+            Name = "Test Ship",
+            Type = ShipType.Longship,
+            Health = 100,
+            MaxHealth = 100
+        };
+
+        fleet.Ships.Add(ship);
+        fleet.Flagship = ship;
+
+        var report = _service.ValidateFleet(fleet);
+
+        report.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateFleet_NegativeMorale_ReturnsError()
+    {
+        var fleet = new FleetData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Fleet),
+            Name = "Test Fleet",
+            Morale = -10
+        };
+
+        var report = _service.ValidateFleet(fleet);
+
+        report.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateShip_ValidShip_ReturnsNoErrors()
+    {
+        var ship = new ShipData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Ship),
+            Name = "Valid Ship",
+            Type = ShipType.Longship,
+            Health = 100,
+            MaxHealth = 100
+        };
+
+        var report = _service.ValidateShip(ship);
+
+        report.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateShip_HealthExceedsMax_ReturnsError()
+    {
+        var ship = new ShipData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Ship),
+            Name = "Damaged Ship",
+            Type = ShipType.Longship,
+            Health = 150,
+            MaxHealth = 100
+        };
+
+        var report = _service.ValidateShip(ship);
+
+        report.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateShip_NegativeHealth_ReturnsError()
+    {
+        var ship = new ShipData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Ship),
+            Name = "Broken Ship",
+            Type = ShipType.Longship,
+            Health = -10,
+            MaxHealth = 100
+        };
+
+        var report = _service.ValidateShip(ship);
+
+        report.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateSave_ValidSave_ReturnsNoErrors()
+    {
+        var save = new SaveFile
+        {
+            FilePath = "test.sav",
+            Name = "Test Save",
+            Header = new SaveHeader { Version = 7, GameVersion = "v1.2.0" },
+            Metadata = new SaveMetadata { CharacterName = "Test", Level = 10 }
+        };
+
+        var report = _service.ValidateSave(save);
+
+        report.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ValidateSave_WithHeroes_ValidatesAllHeroes()
+    {
+        var save = new SaveFile
+        {
+            FilePath = "test.sav",
+            Name = "Test Save",
+            Header = new SaveHeader { Version = 7, GameVersion = "v1.2.0" },
+            Metadata = new SaveMetadata { CharacterName = "Test", Level = 10 }
+        };
+        save.Heroes.Add(CreateValidHero());
+
+        var report = _service.ValidateSave(save);
+
+        report.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ValidateSave_WithParties_ValidatesAllParties()
+    {
+        var save = new SaveFile
+        {
+            FilePath = "test.sav",
+            Name = "Test Save",
+            Header = new SaveHeader { Version = 7, GameVersion = "v1.2.0" },
+            Metadata = new SaveMetadata { CharacterName = "Test", Level = 10 }
+        };
+        save.Parties.Add(CreateValidParty());
+
+        var report = _service.ValidateSave(save);
+
+        report.Should().NotBeNull();
+    }
+
+    #endregion
 }

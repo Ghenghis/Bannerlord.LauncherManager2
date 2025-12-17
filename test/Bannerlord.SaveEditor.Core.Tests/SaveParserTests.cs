@@ -441,4 +441,77 @@ public sealed class SaveParserTests : IDisposable
     }
 
     #endregion
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public async Task LoadAsync_AllOptions_ParsesSuccessfully()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        var options = new LoadOptions
+        {
+            MetadataOnly = false,
+            KeepRawData = true,
+            Permissive = true
+        };
+
+        // Act
+        var save = await _parser.LoadAsync(savePath, options);
+
+        // Assert
+        save.Should().NotBeNull();
+        save.RawData.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task LoadInfoAsync_WithCancellation_RespectsCancellationToken()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        await FluentActions.Invoking(() => _parser.LoadInfoAsync(savePath, cts.Token))
+            .Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task LoadAsync_LargeSave_ParsesSuccessfully()
+    {
+        // Arrange
+        var options = new SaveFileOptions
+        {
+            CharacterName = "LargeTestHero",
+            Level = 50,
+            DayNumber = 1000,
+            Gold = 999999
+        };
+        var savePath = CreateTestSaveFile(options: options);
+
+        // Act
+        var save = await _parser.LoadAsync(savePath);
+
+        // Assert
+        save.Metadata.Level.Should().Be(50);
+        save.Metadata.DayNumber.Should().Be(1000);
+    }
+
+    [Fact]
+    public async Task LoadAsync_UnsupportedVersion_WarnsButContinues()
+    {
+        // Arrange
+        var options = new SaveFileOptions { Version = 999 };
+        var savePath = CreateTestSaveFile(options: options);
+        var loadOptions = new LoadOptions { Permissive = true };
+
+        // Act
+        var save = await _parser.LoadAsync(savePath, loadOptions);
+
+        // Assert
+        save.Should().NotBeNull();
+    }
+
+    #endregion
 }

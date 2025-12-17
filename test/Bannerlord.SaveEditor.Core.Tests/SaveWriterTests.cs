@@ -492,4 +492,163 @@ public sealed class SaveWriterTests : IDisposable
     }
 
     #endregion
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public async Task SaveAsync_NoCompression_WritesUncompressed()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "uncompressed.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath, CompressionLevel.NoCompression);
+
+        // Assert
+        File.Exists(savePath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveAsync_FastestCompression_WritesFile()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "fastest.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath, CompressionLevel.Fastest);
+
+        // Assert
+        File.Exists(savePath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveAsync_SmallestSize_WritesFile()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "smallest.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath, CompressionLevel.SmallestSize);
+
+        // Assert
+        File.Exists(savePath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task VerifyIntegrityAsync_NewlySavedFile_ReturnsTrue()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "verify_new.sav");
+        await _writer.SaveAsync(save, savePath);
+
+        // Act
+        var isValid = await _writer.VerifyIntegrityAsync(savePath);
+
+        // Assert
+        isValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task VerifyIntegrityAsync_MissingFile_ReturnsFalse()
+    {
+        // Act
+        var isValid = await _writer.VerifyIntegrityAsync("/nonexistent/file.sav");
+
+        // Assert
+        isValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithHeroes_WritesHeroData()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Heroes.Add(new HeroData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Hero),
+            Name = "Test Hero",
+            HeroId = "test_hero",
+            Level = 20,
+            Gold = 5000,
+            Attributes = new HeroAttributes { Vigor = 5 },
+            Skills = new SkillSet { OneHanded = 100 }
+        });
+        var savePath = Path.Combine(_testDirectory, "heroes.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Heroes.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithParties_WritesPartyData()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Parties.Add(new PartyData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Party),
+            Name = "Test Party",
+            Gold = 1000,
+            Food = 50,
+            Morale = 75,
+            State = PartyState.Active
+        });
+        var savePath = Path.Combine(_testDirectory, "parties.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Parties.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveAsync_WithFleets_WritesFleetData()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        save.Fleets.Add(new FleetData
+        {
+            Id = MBGUID.Generate(MBGUIDType.Fleet),
+            Name = "Test Fleet",
+            Morale = 80
+        });
+        var savePath = Path.Combine(_testDirectory, "fleets.sav");
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+        var loaded = await _parser.LoadAsync(savePath);
+
+        // Assert
+        loaded.Fleets.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveAsync_ModifiedSave_OverwritesExisting()
+    {
+        // Arrange
+        var save = CreateTestSaveFile();
+        var savePath = Path.Combine(_testDirectory, "overwrite_mod.sav");
+        await _writer.SaveAsync(save, savePath);
+
+        // Modify and save again
+        save.Metadata.CharacterName = "Modified Character Name That Is Longer";
+
+        // Act
+        await _writer.SaveAsync(save, savePath);
+
+        // Assert
+        File.Exists(savePath).Should().BeTrue();
+    }
+
+    #endregion
 }
