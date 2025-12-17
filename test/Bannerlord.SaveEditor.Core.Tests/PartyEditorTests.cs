@@ -567,4 +567,252 @@ public class PartyEditorTests
     }
 
     #endregion
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public void SetWoundedCount_ClampsToMax()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        party.Troops.Add(new TroopStack { TroopId = "test", TroopName = "Test", Count = 10, WoundedCount = 0 });
+
+        // Act
+        _editor.SetWoundedCount(party, "test", 20); // More than total count
+
+        // Assert
+        party.Troops[0].WoundedCount.Should().Be(10); // Clamped to count
+    }
+
+    [Fact]
+    public void SetWoundedCount_ClampsToZero()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        party.Troops.Add(new TroopStack { TroopId = "test", TroopName = "Test", Count = 10, WoundedCount = 5 });
+
+        // Act
+        _editor.SetWoundedCount(party, "test", -5);
+
+        // Assert
+        party.Troops[0].WoundedCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void SetWoundedCount_NonExistentTroop_DoesNothing()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act - should not throw
+        _editor.SetWoundedCount(party, "nonexistent", 5);
+
+        // Assert
+        party.Troops.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetTroopCount_NonExistentTroop_Positive_LogsWarning()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act - should not throw, just log warning
+        _editor.SetTroopCount(party, "nonexistent", 10);
+
+        // Assert - no troop added
+        party.Troops.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetTroopCount_NegativeValue_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetTroopCount(party, "test", -5))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void UpgradeTroops_NotEnoughTroops_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        _editor.AddTroops(party, "recruit", "Recruit", 5, 1);
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.UpgradeTroops(party, "recruit", "infantry", "Infantry", 10, 2))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void UpgradeTroops_NonExistentTroop_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.UpgradeTroops(party, "nonexistent", "infantry", "Infantry", 5, 2))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void AddPrisoners_ExistingPrisoner_IncrementsCount()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        _editor.AddPrisoners(party, "bandit", "Bandit", 5, 1);
+
+        // Act
+        _editor.AddPrisoners(party, "bandit", "Bandit", 3, 1);
+
+        // Assert
+        party.Prisoners.Should().HaveCount(1);
+        party.Prisoners[0].Count.Should().Be(8);
+    }
+
+    [Fact]
+    public void AddPrisoners_NegativeCount_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.AddPrisoners(party, "bandit", "Bandit", -5, 1))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void AddPrisoners_WithHeroId_SetsIsHero()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        var heroId = MBGUID.Generate(MBGUIDType.Hero);
+
+        // Act
+        _editor.AddPrisoners(party, "lord", "Lord Prisoner", 1, 5, heroId);
+
+        // Assert
+        party.Prisoners[0].IsHero.Should().BeTrue();
+        party.Prisoners[0].HeroId.Should().Be(heroId);
+    }
+
+    [Fact]
+    public void ReleasePrisoners_SpecificTroop_PartialRelease()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        _editor.AddPrisoners(party, "bandit", "Bandit", 10, 1);
+
+        // Act
+        var released = _editor.ReleasePrisoners(party, "bandit", 5);
+
+        // Assert
+        released.Should().Be(5);
+        party.Prisoners[0].Count.Should().Be(5);
+    }
+
+    [Fact]
+    public void ReleasePrisoners_NonExistentTroop_ReturnsZero()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act
+        var released = _editor.ReleasePrisoners(party, "nonexistent", 5);
+
+        // Assert
+        released.Should().Be(0);
+    }
+
+    [Fact]
+    public void RecruitPrisoners_NotEnoughPrisoners_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        _editor.AddPrisoners(party, "looter", "Looter", 5, 1);
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.RecruitPrisoners(party, "looter", 10))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void RecruitPrisoners_NonExistentPrisoner_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.RecruitPrisoners(party, "nonexistent", 5))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void RemoveTroops_PartialRemove_AdjustsWounded()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        party.Troops.Add(new TroopStack 
+        { 
+            TroopId = "test", 
+            TroopName = "Test", 
+            Count = 10, 
+            WoundedCount = 8 
+        });
+
+        // Act
+        _editor.RemoveTroops(party, "test", 5);
+
+        // Assert
+        party.Troops[0].Count.Should().Be(5);
+        party.Troops[0].WoundedCount.Should().Be(5); // Adjusted to match count
+    }
+
+    [Fact]
+    public void SetTroopCount_ReducesCount_AdjustsWounded()
+    {
+        // Arrange
+        var party = CreateTestParty();
+        party.Troops.Add(new TroopStack 
+        { 
+            TroopId = "test", 
+            TroopName = "Test", 
+            Count = 10, 
+            WoundedCount = 8 
+        });
+
+        // Act
+        _editor.SetTroopCount(party, "test", 5);
+
+        // Assert
+        party.Troops[0].Count.Should().Be(5);
+        party.Troops[0].WoundedCount.Should().Be(5); // Adjusted to match new count
+    }
+
+    [Fact]
+    public void AddTroops_ZeroCount_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.AddTroops(party, "test", "Test", 0, 1))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void AddPrisoners_ZeroCount_ThrowsException()
+    {
+        // Arrange
+        var party = CreateTestParty();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.AddPrisoners(party, "test", "Test", 0, 1))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    #endregion
 }

@@ -531,4 +531,256 @@ public sealed class FleetEditorTests
     }
 
     #endregion
+
+    #region Additional Edge Case Tests
+
+    [Fact]
+    public void SetFlagship_Null_ClearsFlagship()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Act
+        _editor.SetFlagship(fleet, null);
+
+        // Assert
+        fleet.Flagship.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetFlagship_ShipNotInFleet_ThrowsException()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip(); // Not added to fleet
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetFlagship(fleet, ship))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void SetFleetGold_NegativeValue_ThrowsException()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetFleetGold(fleet, -100))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void SetFleetMorale_NegativeValue_ClampsToZero()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetMorale(fleet, -50);
+
+        // Assert
+        fleet.Morale.Should().Be(0);
+    }
+
+    [Fact]
+    public void SetFleetFood_SetsFood()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetFood(fleet, 500f);
+
+        // Assert
+        fleet.FoodSupplies.Should().Be(500f);
+    }
+
+    [Fact]
+    public void SetFleetFood_NegativeValue_ClampsToZero()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetFood(fleet, -100f);
+
+        // Assert
+        fleet.FoodSupplies.Should().Be(0f);
+    }
+
+    [Fact]
+    public void AddShipToFleet_AlreadyInFleet_DoesNotAddAgain()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Act
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Assert
+        fleet.Ships.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void RemoveShipFromFleet_NotInFleet_DoesNothing()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+
+        // Act - should not throw
+        _editor.RemoveShipFromFleet(fleet, ship);
+
+        // Assert
+        fleet.Ships.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RemoveShipFromFleet_Flagship_SelectsNewFlagship()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship1 = CreateTestShip();
+        var ship2 = _editor.CreateShip("Ship 2", ShipType.Galley);
+        _editor.AddShipToFleet(fleet, ship1);
+        _editor.AddShipToFleet(fleet, ship2);
+        _editor.SetFlagship(fleet, ship1);
+
+        // Act
+        _editor.RemoveShipFromFleet(fleet, ship1);
+
+        // Assert
+        fleet.Flagship.Should().Be(ship2);
+    }
+
+    [Fact]
+    public void SetShipHull_NegativeValue_ThrowsException()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetShipHull(ship, -100))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void SetShipHull_ExceedsMax_ClampsToMax()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        var maxHull = ship.MaxHullPoints;
+
+        // Act
+        _editor.SetShipHull(ship, maxHull + 1000);
+
+        // Assert
+        ship.CurrentHullPoints.Should().Be(maxHull);
+    }
+
+    [Fact]
+    public void SetShipCrew_NegativeValue_ThrowsException()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetShipCrew(ship, -10))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void SetShipCrew_ExceedsCapacity_ThrowsException()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.SetShipCrew(ship, ship.CrewCapacity + 100))
+            .Should().Throw<EditorException>();
+    }
+
+    [Fact]
+    public void FillFleetCrew_FillsAllShips()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship1 = CreateTestShip();
+        var ship2 = _editor.CreateShip("Ship 2", ShipType.Galley);
+        _editor.AddShipToFleet(fleet, ship1);
+        _editor.AddShipToFleet(fleet, ship2);
+
+        // Act
+        _editor.FillFleetCrew(fleet);
+
+        // Assert
+        ship1.CrewCount.Should().Be(ship1.CrewCapacity);
+        ship2.CrewCount.Should().Be(ship2.CrewCapacity);
+    }
+
+    [Fact]
+    public void SetCrewMorale_ClampsToRange()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetCrewMorale(ship, 150f);
+
+        // Assert
+        ship.CrewMorale.Should().Be(100f);
+    }
+
+    [Fact]
+    public void SetCrewMorale_NegativeValue_ClampsToZero()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetCrewMorale(ship, -50f);
+
+        // Assert
+        ship.CrewMorale.Should().Be(0f);
+    }
+
+    [Fact]
+    public void CreateFleet_WithAdmiralAndNoClan_SetsBothCorrectly()
+    {
+        // Arrange
+        var admiral = CreateTestHero();
+
+        // Act
+        var fleet = _editor.CreateFleet("Admiral Fleet", admiral, null);
+
+        // Assert
+        fleet.Admiral.Should().Be(admiral);
+        fleet.Clan.Should().BeNull();
+    }
+
+    [Fact]
+    public void CreateShip_AllTypes_CreatesValidShips()
+    {
+        // Test all ship types
+        var types = new[] { ShipType.Snekkja, ShipType.Knarr, ShipType.Cog, ShipType.Longship, 
+                           ShipType.Galley, ShipType.Warship, ShipType.Carrack, ShipType.ManOfWar };
+
+        foreach (var type in types)
+        {
+            // Act
+            var ship = _editor.CreateShip($"Test {type}", type);
+
+            // Assert
+            ship.Should().NotBeNull();
+            ship.Type.Should().Be(type);
+            ship.CurrentHullPoints.Should().BeGreaterThan(0);
+        }
+    }
+
+    #endregion
 }
