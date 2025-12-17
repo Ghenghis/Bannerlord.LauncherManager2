@@ -756,4 +756,80 @@ public class ValidationServiceTests
 
     #endregion
 
+    #region Additional ValidationIssue Tests
+
+    [Fact]
+    public void ValidationIssue_ErrorSeverity_ToString_ContainsError()
+    {
+        // Arrange
+        var issue = new ValidationIssue(ValidationSeverity.Error, "ERR_001", "Error message");
+
+        // Act
+        var result = issue.ToString();
+
+        // Assert
+        result.Should().Contain("Error");
+    }
+
+    [Fact]
+    public void ValidationIssue_WarningSeverity_ToString_ContainsWarning()
+    {
+        // Arrange
+        var issue = new ValidationIssue(ValidationSeverity.Warning, "WARN_001", "Warning message");
+
+        // Act
+        var result = issue.ToString();
+
+        // Assert
+        result.Should().Contain("Warning");
+    }
+
+    [Fact]
+    public void ValidationIssue_Code_IsPreserved()
+    {
+        // Arrange
+        var issue = new ValidationIssue(ValidationSeverity.Error, "CUSTOM_CODE", "Message");
+
+        // Act & Assert
+        issue.Code.Should().Be("CUSTOM_CODE");
+    }
+
+    [Fact]
+    public void ValidationIssue_Message_IsPreserved()
+    {
+        // Arrange
+        var issue = new ValidationIssue(ValidationSeverity.Error, "CODE", "Custom message");
+
+        // Act & Assert
+        issue.Message.Should().Be("Custom message");
+    }
+
+    #endregion
+
+    #region Additional PerkDatabase Tests
+
+    [Theory]
+    [InlineData("mod_perk_1")]
+    [InlineData("mod_perk_2")]
+    public void PerkDatabase_ModPrefixedPerks_AreRecognized(string perkId)
+    {
+        // Act
+        var result = PerkDatabase.IsValidPerk(perkId);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void PerkDatabase_EmptyPerk_ReturnsFalse()
+    {
+        // Act
+        var result = PerkDatabase.IsValidPerk(string.Empty);
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    #endregion
 }
+
