@@ -258,4 +258,180 @@ public class ZlibHandlerTests
     }
 
     #endregion
+
+    #region Comprehensive Compression Level Tests
+
+    [Theory]
+    [InlineData(CompressionLevel.Optimal)]
+    [InlineData(CompressionLevel.Fastest)]
+    [InlineData(CompressionLevel.NoCompression)]
+    public async Task CompressAsync_AllCompressionLevels_Work(CompressionLevel level)
+    {
+        // Arrange
+        var originalData = System.Text.Encoding.UTF8.GetBytes("Test data for compression level test");
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData, level);
+
+        // Assert
+        compressed.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CompressAsync_OptimalLevel_ProducesSmallestOutput()
+    {
+        // Arrange
+        var originalData = System.Text.Encoding.UTF8.GetBytes(new string('a', 1000));
+
+        // Act
+        var optimal = await _handler.CompressAsync(originalData, CompressionLevel.Optimal);
+        var fastest = await _handler.CompressAsync(originalData, CompressionLevel.Fastest);
+
+        // Assert - optimal should be at least as small
+        optimal.Length.Should().BeLessThanOrEqualTo(fastest.Length);
+    }
+
+    #endregion
+
+    #region Comprehensive Data Size Tests
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(100)]
+    [InlineData(1000)]
+    [InlineData(10000)]
+    public async Task CompressDecompress_VariousSizes_WorksCorrectly(int size)
+    {
+        // Arrange
+        var originalData = new byte[size];
+        new Random(42).NextBytes(originalData);
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData);
+        var decompressed = await _handler.DecompressAsync(compressed, size);
+
+        // Assert
+        decompressed.Should().BeEquivalentTo(originalData);
+    }
+
+    [Fact]
+    public async Task CompressAsync_SingleByte_Works()
+    {
+        // Arrange
+        var originalData = new byte[] { 0x42 };
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData);
+        var decompressed = await _handler.DecompressAsync(compressed, 1);
+
+        // Assert
+        decompressed.Should().BeEquivalentTo(originalData);
+    }
+
+    [Fact]
+    public async Task CompressAsync_AllZeros_CompressesWell()
+    {
+        // Arrange
+        var originalData = new byte[1000];
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData, CompressionLevel.Optimal);
+
+        // Assert - all zeros should compress very well
+        compressed.Length.Should().BeLessThan(originalData.Length);
+    }
+
+    [Fact]
+    public async Task CompressAsync_RandomData_Works()
+    {
+        // Arrange
+        var originalData = new byte[500];
+        new Random(123).NextBytes(originalData);
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData);
+        var decompressed = await _handler.DecompressAsync(compressed, 500);
+
+        // Assert
+        decompressed.Should().BeEquivalentTo(originalData);
+    }
+
+    #endregion
+
+    #region Comprehensive Text Data Tests
+
+    [Theory]
+    [InlineData("Hello, World!")]
+    [InlineData("Lorem ipsum dolor sit amet")]
+    public async Task CompressDecompress_TextData_PreservesContent(string text)
+    {
+        // Arrange
+        var originalData = System.Text.Encoding.UTF8.GetBytes(text);
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData);
+        var decompressed = await _handler.DecompressAsync(compressed, originalData.Length);
+
+        // Assert
+        System.Text.Encoding.UTF8.GetString(decompressed).Should().Be(text);
+    }
+
+    [Fact]
+    public async Task CompressAsync_UnicodeText_PreservesContent()
+    {
+        // Arrange
+        var text = "Unicode: 日本語 中文 한국어 العربية";
+        var originalData = System.Text.Encoding.UTF8.GetBytes(text);
+
+        // Act
+        var compressed = await _handler.CompressAsync(originalData);
+        var decompressed = await _handler.DecompressAsync(compressed, originalData.Length);
+
+        // Assert
+        System.Text.Encoding.UTF8.GetString(decompressed).Should().Be(text);
+    }
+
+    #endregion
+
+    #region Comprehensive Error Handling Tests
+
+    [Fact]
+    public async Task CompressAsync_NullData_ThrowsException()
+    {
+        // Act & Assert
+        await FluentActions.Invoking(() => _handler.CompressAsync(null!))
+            .Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task DecompressAsync_InvalidData_ThrowsException()
+    {
+        // Arrange
+        var invalidData = new byte[] { 0x00, 0x01, 0x02, 0x03 };
+
+        // Act & Assert
+        await FluentActions.Invoking(() => _handler.DecompressAsync(invalidData, 100))
+            .Should().ThrowAsync<Exception>();
+    }
+
+    #endregion
+
+    #region Comprehensive Cancellation Tests
+
+    [Fact]
+    public async Task DecompressAsync_ValidToken_Works()
+    {
+        // Arrange
+        var originalData = System.Text.Encoding.UTF8.GetBytes("Test");
+        var compressed = await _handler.CompressAsync(originalData);
+        var cts = new CancellationTokenSource();
+
+        // Act
+        var decompressed = await _handler.DecompressAsync(compressed, originalData.Length, cts.Token);
+
+        // Assert
+        decompressed.Should().BeEquivalentTo(originalData);
+    }
+
+    #endregion
 }
