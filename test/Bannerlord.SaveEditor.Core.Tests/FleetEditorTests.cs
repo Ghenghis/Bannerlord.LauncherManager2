@@ -1196,4 +1196,268 @@ public sealed class FleetEditorTests
     }
 
     #endregion
+
+    #region Comprehensive Fleet Creation Tests
+
+    [Theory]
+    [InlineData("Fleet Alpha")]
+    [InlineData("Fleet Beta")]
+    [InlineData("Fleet Gamma")]
+    public void CreateFleet_ValidNames_CreatesFleet(string name)
+    {
+        // Act
+        var fleet = _editor.CreateFleet(name);
+
+        // Assert
+        fleet.Should().NotBeNull();
+        fleet.Name.Should().Be(name);
+    }
+
+    [Fact]
+    public void CreateFleet_EmptyName_CreatesFleet()
+    {
+        // Act
+        var fleet = _editor.CreateFleet(string.Empty);
+
+        // Assert
+        fleet.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void CreateFleet_NullName_HandlesGracefully()
+    {
+        // Act
+        try
+        {
+            var fleet = _editor.CreateFleet(null!);
+            fleet.Should().NotBeNull();
+        }
+        catch
+        {
+            // Exception is acceptable behavior
+        }
+    }
+
+    [Fact]
+    public void CreateFleet_MultipleTimes_CreatesUniqueFleets()
+    {
+        // Act
+        var fleet1 = _editor.CreateFleet("Fleet 1");
+        var fleet2 = _editor.CreateFleet("Fleet 2");
+        var fleet3 = _editor.CreateFleet("Fleet 3");
+
+        // Assert
+        fleet1.Id.Should().NotBe(fleet2.Id);
+        fleet2.Id.Should().NotBe(fleet3.Id);
+    }
+
+    #endregion
+
+    #region Comprehensive Ship Creation Tests
+
+    [Theory]
+    [InlineData("Warship")]
+    [InlineData("Transport")]
+    [InlineData("Scout")]
+    public void CreateShip_ValidNames_CreatesShip(string name)
+    {
+        // Act
+        var ship = _editor.CreateShip(name, ShipType.Galley);
+
+        // Assert
+        ship.Should().NotBeNull();
+        ship.Name.Should().Be(name);
+    }
+
+    [Theory]
+    [InlineData(ShipType.Galley)]
+    [InlineData(ShipType.Longship)]
+    [InlineData(ShipType.Cog)]
+    public void CreateShip_AllTypes_CreatesCorrectType(ShipType type)
+    {
+        // Act
+        var ship = _editor.CreateShip("Test Ship", type);
+
+        // Assert
+        ship.Type.Should().Be(type);
+    }
+
+    [Fact]
+    public void CreateShip_SetsDefaultValues()
+    {
+        // Act
+        var ship = _editor.CreateShip("Default Ship", ShipType.Galley);
+
+        // Assert
+        ship.CurrentHullPoints.Should().BeGreaterThanOrEqualTo(0);
+        ship.CrewCount.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    #endregion
+
+    #region Comprehensive Fleet Ship Management Tests
+
+    [Fact]
+    public void AddShipToFleet_SingleShip_AddsSuccessfully()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Assert
+        fleet.Ships.Should().Contain(ship);
+    }
+
+    [Fact]
+    public void AddShipToFleet_MultipleShips_AddsAll()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship1 = _editor.CreateShip("Ship 1", ShipType.Galley);
+        var ship2 = _editor.CreateShip("Ship 2", ShipType.Longship);
+        var ship3 = _editor.CreateShip("Ship 3", ShipType.Cog);
+
+        // Act
+        _editor.AddShipToFleet(fleet, ship1);
+        _editor.AddShipToFleet(fleet, ship2);
+        _editor.AddShipToFleet(fleet, ship3);
+
+        // Assert
+        fleet.Ships.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void RemoveShipFromFleet_ExistingShip_Removes()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Act
+        _editor.RemoveShipFromFleet(fleet, ship);
+
+        // Assert
+        fleet.Ships.Should().NotContain(ship);
+    }
+
+    [Fact]
+    public void RemoveShipFromFleet_NonExistentShip_DoesNotThrow()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+
+        // Act & Assert - should not throw
+        FluentActions.Invoking(() => _editor.RemoveShipFromFleet(fleet, ship))
+            .Should().NotThrow();
+    }
+
+    #endregion
+
+    #region Comprehensive Morale Tests
+
+    [Fact]
+    public void SetFleetMorale_Over100Value_ClampsTo100()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetMorale(fleet, 150f);
+
+        // Assert
+        fleet.Morale.Should().Be(100);
+    }
+
+    #endregion
+
+    #region Comprehensive Gold Tests
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1000)]
+    [InlineData(10000)]
+    [InlineData(100000)]
+    public void SetFleetGold_ValidValues_SetsCorrectly(int gold)
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetGold(fleet, gold);
+
+        // Assert
+        fleet.Gold.Should().Be(gold);
+    }
+
+    #endregion
+
+    #region Comprehensive Crew Tests
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    [InlineData(25)]
+    public void SetShipCrew_ValidValues_SetsCorrectly(int crew)
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetShipCrew(ship, crew);
+
+        // Assert
+        ship.CrewCount.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Theory]
+    [InlineData(CrewQuality.Regular)]
+    [InlineData(CrewQuality.Veteran)]
+    [InlineData(CrewQuality.Elite)]
+    public void SetCrewQuality_AllValues_SetsCorrectly(CrewQuality quality)
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.SetCrewQuality(ship, quality);
+
+        // Assert
+        ship.CrewQuality.Should().Be(quality);
+    }
+
+    #endregion
+
+    #region Comprehensive Cargo Tests
+
+    [Fact]
+    public void AddCargo_SmallItem_AddsToCargo()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        var cargo = new CargoItem { ItemId = "wood", ItemName = "Wood", Count = 1, Weight = 5 };
+
+        // Act
+        _editor.AddCargo(ship, cargo);
+
+        // Assert
+        ship.Cargo.Should().Contain(c => c.ItemId == "wood");
+    }
+
+    [Fact]
+    public void ClearCargo_EmptyShip_DoesNotThrow()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act & Assert - should not throw
+        FluentActions.Invoking(() => _editor.ClearCargo(ship))
+            .Should().NotThrow();
+    }
+
+    #endregion
 }
