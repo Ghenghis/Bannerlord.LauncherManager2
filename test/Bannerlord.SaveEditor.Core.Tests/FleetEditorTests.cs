@@ -1460,4 +1460,117 @@ public sealed class FleetEditorTests
     }
 
     #endregion
+
+    #region Comprehensive Fleet Operations Tests
+
+    [Fact]
+    public void AddShipToFleet_NewShip_AddsToFleet()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        var initialCount = fleet.Ships.Count;
+
+        // Act
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Assert
+        fleet.Ships.Count.Should().Be(initialCount + 1);
+    }
+
+    [Fact]
+    public void RemoveShipFromFleet_ExistingShip_RemovesFromFleet()
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+        var ship = CreateTestShip();
+        _editor.AddShipToFleet(fleet, ship);
+
+        // Act
+        _editor.RemoveShipFromFleet(fleet, ship);
+
+        // Assert
+        fleet.Ships.Should().NotContain(ship);
+    }
+
+    #endregion
+
+    #region Comprehensive Upgrade Tests
+
+    [Theory]
+    [InlineData(ShipUpgrade.ReinforcedHull)]
+    [InlineData(ShipUpgrade.SpeedSails)]
+    [InlineData(ShipUpgrade.RammingProw)]
+    public void AddUpgrade_AllTypes_AddsCorrectly(ShipUpgrade upgrade)
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        _editor.AddUpgrade(ship, upgrade);
+
+        // Assert
+        ship.Upgrades.Should().Contain(upgrade);
+    }
+
+    [Fact]
+    public void RemoveUpgrade_NonExisting_DoesNotThrow()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act & Assert
+        FluentActions.Invoking(() => _editor.RemoveUpgrade(ship, ShipUpgrade.ReinforcedHull))
+            .Should().NotThrow();
+    }
+
+    [Fact]
+    public void HasUpgrade_WithUpgrade_ReturnsTrue()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+        _editor.AddUpgrade(ship, ShipUpgrade.SpeedSails);
+
+        // Act
+        var hasUpgrade = ship.Upgrades.Contains(ShipUpgrade.SpeedSails);
+
+        // Assert
+        hasUpgrade.Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasUpgrade_WithoutUpgrade_ReturnsFalse()
+    {
+        // Arrange
+        var ship = CreateTestShip();
+
+        // Act
+        var hasUpgrade = ship.Upgrades.Contains(ShipUpgrade.SpeedSails);
+
+        // Assert
+        hasUpgrade.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region Comprehensive Position Tests
+
+    [Theory]
+    [InlineData(0f, 0f)]
+    [InlineData(100f, 200f)]
+    [InlineData(-50f, 50f)]
+    public void SetFleetPosition_ValidCoordinates_SetsCorrectly(float x, float y)
+    {
+        // Arrange
+        var fleet = CreateTestFleet();
+
+        // Act
+        _editor.SetFleetPosition(fleet, x, y);
+
+        // Assert
+        fleet.Position.X.Should().Be(x);
+        fleet.Position.Y.Should().Be(y);
+    }
+
+    #endregion
 }
