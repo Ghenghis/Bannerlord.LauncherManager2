@@ -825,4 +825,141 @@ public class MBGUIDTests
     }
 
     #endregion
+
+    #region Comprehensive Type Tests
+
+    [Theory]
+    [InlineData(MBGUIDType.Hero)]
+    [InlineData(MBGUIDType.Party)]
+    [InlineData(MBGUIDType.Settlement)]
+    [InlineData(MBGUIDType.Clan)]
+    [InlineData(MBGUIDType.Kingdom)]
+    public void Generate_AllTypes_CreatesValidGuid(MBGUIDType type)
+    {
+        // Act
+        var guid = MBGUID.Generate(type);
+
+        // Assert
+        guid.IsEmpty.Should().BeFalse();
+        guid.Type.Should().Be(type);
+    }
+
+    [Fact]
+    public void Type_ReturnsCorrectType()
+    {
+        // Arrange
+        var guid = MBGUID.Generate(MBGUIDType.Hero);
+
+        // Act & Assert
+        guid.Type.Should().Be(MBGUIDType.Hero);
+    }
+
+    #endregion
+
+    #region Comprehensive InternalValue Tests
+
+    [Fact]
+    public void InternalValue_SameGuids_AreEqual()
+    {
+        // Arrange
+        var guid1 = new MBGUID(5, 500);
+        var guid2 = new MBGUID(5, 500);
+
+        // Assert
+        guid1.InternalValue.Should().Be(guid2.InternalValue);
+    }
+
+    [Fact]
+    public void InternalValue_DifferentGuids_AreDifferent()
+    {
+        // Arrange
+        var guid1 = new MBGUID(5, 500);
+        var guid2 = new MBGUID(5, 501);
+
+        // Assert
+        guid1.InternalValue.Should().NotBe(guid2.InternalValue);
+    }
+
+    #endregion
+
+    #region Comprehensive String Conversion Tests
+
+    [Fact]
+    public void ToString_NonEmpty_ReturnsNonEmptyString()
+    {
+        // Arrange
+        var guid = MBGUID.Generate(MBGUIDType.Hero);
+
+        // Act
+        var result = guid.ToString();
+
+        // Assert
+        result.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void ToString_Empty_ReturnsValidString()
+    {
+        // Arrange
+        var guid = MBGUID.Empty;
+
+        // Act
+        var result = guid.ToString();
+
+        // Assert
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ToString_ConsistentForSameGuid()
+    {
+        // Arrange
+        var guid = new MBGUID(10, 1000);
+
+        // Act
+        var result1 = guid.ToString();
+        var result2 = guid.ToString();
+
+        // Assert
+        result1.Should().Be(result2);
+    }
+
+    #endregion
+
+    #region Comprehensive Comparison Tests
+
+    [Fact]
+    public void CompareTo_SameGuid_ReturnsZero()
+    {
+        // Arrange
+        var guid1 = new MBGUID(1, 100);
+        var guid2 = new MBGUID(1, 100);
+
+        // Act & Assert
+        guid1.CompareTo(guid2).Should().Be(0);
+    }
+
+    [Fact]
+    public void CompareTo_LesserGuid_ReturnsNegative()
+    {
+        // Arrange
+        var guid1 = new MBGUID(1, 100);
+        var guid2 = new MBGUID(1, 200);
+
+        // Act & Assert
+        guid1.CompareTo(guid2).Should().BeLessThan(0);
+    }
+
+    [Fact]
+    public void CompareTo_GreaterGuid_ReturnsPositive()
+    {
+        // Arrange
+        var guid1 = new MBGUID(1, 200);
+        var guid2 = new MBGUID(1, 100);
+
+        // Act & Assert
+        guid1.CompareTo(guid2).Should().BeGreaterThan(0);
+    }
+
+    #endregion
 }
