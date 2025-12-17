@@ -914,4 +914,21 @@ public sealed class SaveParserTests : IDisposable
     }
 
     #endregion
+
+    #region Comprehensive Header Parsing Tests
+
+    [Fact]
+    public async Task LoadAsync_ValidFile_ParsesHeaderVersion()
+    {
+        // Arrange
+        var savePath = CreateTestSaveFile();
+
+        // Act
+        var save = await _parser.LoadAsync(savePath);
+
+        // Assert
+        save.Header.Version.Should().BeGreaterThan(0);
+    }
+
+    #endregion
 }
